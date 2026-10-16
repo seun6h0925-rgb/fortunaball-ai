@@ -1,0 +1,37 @@
+# ===== 비밀값 (절대 커밋 금지) =====
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+application-local.yml
+application-secret.yml
+
+# ===== 백엔드 (Java / Spring Boot) =====
+backend/build/
+backend/.gradle/
+backend/target/
+backend/out/
+*.class
+*.jar
+*.log
+logs/
+
+# ===== 프론트엔드 (React) =====
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+
+# ===== IDE / OS =====
+.idea/
+*.iml
+.vscode/
+.antigravity/
+.DS_Store
+Thumbs.db
+
+# ===== 업로드 파일 · 데이터 원본 =====
+uploads/
+data/raw/
