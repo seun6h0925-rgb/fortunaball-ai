@@ -125,7 +125,7 @@ CREATE TABLE number_issue (
   guest_token            VARCHAR(64)  NOT NULL COMMENT '게스트 식별값',
   target_round_no        INT          NOT NULL COMMENT '대상 회차 번호. 미래 회차 발급을 위해 FK로 묶지 않는다.',
   game_count             INT          NOT NULL COMMENT '확정한 게임 수',
-  issue_type             VARCHAR(30)  NOT NULL COMMENT '번호 생성 방식 (초안: STAT_AUTO / STAT_CUSTOM / DREAM / ANALYST, 확정 전)',
+  issue_type             VARCHAR(30)  NOT NULL COMMENT '번호 생성 방식 (STAT_AUTO / STAT_CUSTOM / DREAM / ANALYST). 패턴 선택 생성은 STAT_CUSTOM + generation_basis 컬럼으로 구분',
   generation_basis_type  VARCHAR(30)  NULL COMMENT '[추가 2026-10-16] 생성 근거 유형. 예: STAT_PATTERN. 쓰지 않으면 NULL',
   generation_basis_value VARCHAR(50)  NULL COMMENT '[추가 2026-10-16] 생성 근거값. 예: pattern_code(HOT_NUMBER 등)',
   created_at             DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '발급일자',
@@ -234,14 +234,15 @@ CREATE TABLE stat_pattern_card (
   pattern_code     VARCHAR(30)  NOT NULL COMMENT 'HOT_NUMBER / WINTER_SLEEP / BALANCE_MIX / HIGH_LOW_MIX / CENTER_ZONE / ALL_SECTION_SPREAD',
   pattern_name     VARCHAR(50)  NOT NULL COMMENT '패턴 이름',
   description      VARCHAR(255) NOT NULL COMMENT '사실 위주의 설명 문구',
-  period_rounds    INT          NOT NULL DEFAULT 100 COMMENT '해당 횟수 계산 기간(회)',
+  period_rounds    INT          NOT NULL COMMENT '해당 횟수 계산 기간(회). 20 / 50 / 100 (설정값)',
   hit_count        INT          NOT NULL COMMENT '기간 안에서 패턴에 해당한 회차 수',
   condition_params JSON         NULL     COMMENT '번호 생성에 쓰는 조건값',
   created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_stat_pattern_card (snapshot_id, pattern_code),
+  UNIQUE KEY uk_stat_pattern_card (snapshot_id, pattern_code, period_rounds),
   CONSTRAINT fk_stat_pattern_card_snapshot FOREIGN KEY (snapshot_id) REFERENCES stat_round_snapshot (id),
-  CONSTRAINT ck_stat_pattern_card_hit CHECK (hit_count >= 0)
+  CONSTRAINT ck_stat_pattern_card_hit CHECK (hit_count >= 0),
+  CONSTRAINT ck_stat_pattern_card_period CHECK (period_rounds > 0)
 ) ENGINE=InnoDB COMMENT='통계 패턴 카드';
 
 -- =====================================================================
@@ -261,7 +262,7 @@ CREATE TABLE lotto_store (
   geocode_status       VARCHAR(20)   NOT NULL DEFAULT 'PENDING' COMMENT '[추가 2026-10-16] PENDING / SUCCESS / FAILED. 좌표 변환 상태',
   geocoded_at          DATETIME      NULL     COMMENT '[추가 2026-10-16] 좌표 변환일자',
   source_base_date     DATE          NULL     COMMENT '[추가 2026-10-16] 공공데이터 기준일',
-  first_seen_upload_id BIGINT        NULL     COMMENT '[추가 2026-10-16] 처음 확인된 업로드. 루키 명당 판정에 사용',
+  first_seen_upload_id BIGINT        NULL     COMMENT '[추가 2026-10-16] 처음 확인된 업로드. 변경점 비교(신규 판매점 확인)용. 루키 명당 판정에는 쓰지 않음',
   first_seen_at        DATETIME      NULL     COMMENT '[추가 2026-10-16] 처음 확인된 일자',
   created_at           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
   updated_at           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '최종수정일',
@@ -490,9 +491,9 @@ CREATE TABLE ai_input_policy (
   id               BIGINT       NOT NULL AUTO_INCREMENT COMMENT '정책 고유번호',
   policy_code      VARCHAR(50)  NOT NULL COMMENT '예외처리 정책 코드',
   policy_name      VARCHAR(100) NOT NULL COMMENT '정책 이름',
-  feature_scope    VARCHAR(30)  NOT NULL COMMENT '적용 기능 구분 (ai_usage_log.feature_type 값과 맞춘다)',
-  policy_type      VARCHAR(30)  NOT NULL COMMENT '정책 분류 (값은 확정 전)',
-  action_type      VARCHAR(30)  NOT NULL COMMENT '처리 방식 (값은 확정 전)',
+  feature_scope    VARCHAR(30)  NOT NULL COMMENT '적용 기능 구분. ANALYST / DREAM / ALL (ANALYST, DREAM은 ai_usage_log.feature_type 값과 같다)',
+  policy_type      VARCHAR(30)  NOT NULL COMMENT '정책 분류. OFF_TOPIC / GUARANTEE_REQUEST / PURCHASE_PUSH / DESPERATE_REQUEST / DREAM_LOW_RELEVANCE / LOCATION_REQUIRED (관리자가 새 분류를 추가할 수 있어 CHECK 없음)',
+  action_type      VARCHAR(30)  NOT NULL COMMENT '처리 방식. FIXED_RESPONSE(AI 호출 없이 고정 응답) / AI_REVIEW(AI가 문맥을 보고 판단)',
   priority         INT          NOT NULL COMMENT '처리 우선순위',
   response_message TEXT          NOT NULL COMMENT '사용자 안내 문구',
   is_active        TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '정책 활성화 여부',
@@ -500,7 +501,9 @@ CREATE TABLE ai_input_policy (
   updated_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '최종수정일',
   PRIMARY KEY (id),
   UNIQUE KEY uk_ai_input_policy_code (policy_code),
-  KEY idx_ai_input_policy_scope (feature_scope, priority)
+  KEY idx_ai_input_policy_scope (feature_scope, priority),
+  CONSTRAINT ck_ai_input_policy_scope CHECK (feature_scope IN ('ANALYST','DREAM','ALL')),
+  CONSTRAINT ck_ai_input_policy_action CHECK (action_type IN ('FIXED_RESPONSE','AI_REVIEW'))
 ) ENGINE=InnoDB COMMENT='AI 예외처리 정책';
 
 -- AI 예외처리 핵심 키워드. 키워드 일치만으로 차단하지 않고 AI 가 문맥을 검토한다.
