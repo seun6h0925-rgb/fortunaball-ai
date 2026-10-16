@@ -1,4 +1,4 @@
-package com.fortunaball.domain.health;
+package com.fortunaball.common.status;
 
 import com.fortunaball.common.exception.BusinessException;
 import com.fortunaball.common.exception.ErrorCode;
@@ -14,20 +14,20 @@ import java.util.Map;
 
 /**
  * 서버·DB 연결 확인용 주소. 세팅이 잘 됐는지, 배포 후 살아있는지 볼 때 쓴다.
- *   GET /api/health  → 서버 시간과 DB 연결 결과
+ *   GET /api/status  → 서버 시간과 DB 연결 결과
  * DB가 안 되면 503으로 응답하고, 원인은 로그(traceId)에서 확인한다.
  */
 @RestController
-public class HealthController {
+public class StatusController {
 
     private final JdbcTemplate jdbcTemplate;
 
-    public HealthController(JdbcTemplate jdbcTemplate) {
+    public StatusController(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    @GetMapping("/api/health")
-    public ApiResponse<Map<String, Object>> health() {
+    @GetMapping("/api/status")
+    public ApiResponse<Map<String, Object>> status() {
         try {
             jdbcTemplate.queryForObject("SELECT 1", Integer.class);
         } catch (Exception e) {
