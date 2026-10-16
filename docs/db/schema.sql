@@ -14,6 +14,25 @@
 --    아직 추첨되지 않은 회차를 가리킬 수 있어 FK로 묶지 않는다.
 -- =====================================================================
 
+-- =====================================================================
+-- [0단계] 계정·DB·권한 만들기  (처음 한 번만, root 계정으로 따로 실행)
+--  * 이 파일은 fortuna 계정으로 실행한다. 계정 생성은 root만 할 수 있어서
+--    아래 SQL은 주석으로 두었다. 복사해서 root 접속기의 콘솔에서 실행한다.
+--  * 비밀번호는 공개 저장소에 올리지 않는다. <여기에_비밀번호> 를 직접 바꿔서 실행한다.
+--  * 'localhost' = 이 컴퓨터에서만 접속 (학원 자료의 '%' 는 외부 접속까지 열린다)
+--  * 계정 이름(fortuna)과 DB 이름(fortuna_ball)은 다르다.
+--    .env : DB_USER=fortuna , DB_NAME=fortuna_ball
+--  * 📚 배운 내용: 계정 생성·권한 부여 (CREATE USER / GRANT)
+--
+-- CREATE USER 'fortuna'@'localhost' IDENTIFIED BY '<여기에_비밀번호>';
+-- CREATE DATABASE IF NOT EXISTS fortuna_ball DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+-- GRANT ALL PRIVILEGES ON fortuna_ball.* TO 'fortuna'@'localhost';
+-- SHOW GRANTS FOR 'fortuna'@'localhost';
+--
+-- 실행 순서: ① 위 4줄(root) → ② IntelliJ에서 fortuna 계정으로 새 접속기 생성
+--            (User=fortuna, Database=fortuna_ball) → ③ 이 파일 실행 → ④ seed_dream_symbols.sql
+-- =====================================================================
+
 CREATE DATABASE IF NOT EXISTS fortuna_ball
   DEFAULT CHARACTER SET utf8mb4
   DEFAULT COLLATE utf8mb4_0900_ai_ci;
