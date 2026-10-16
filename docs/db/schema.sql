@@ -1,6 +1,7 @@
 -- =====================================================================
 -- 포르투나볼 AI  DB 스키마 (MySQL 8.0 이상)
 -- 기준 문서: 포르투나볼_DB설계서_2026-10-16.md (테이블 30개)
+--   = 2026-10-15 DB 테이블 설계서(26개) + 2026-10-16 추가 4개 테이블
 -- DB명: fortuna_ball / 문자셋: utf8mb4
 --
 -- 작성 기준
@@ -28,8 +29,8 @@ SET NAMES utf8mb4;
 CREATE TABLE admin_user (
   id            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '관리자 고유번호',
   login_id      VARCHAR(50)  NOT NULL COMMENT '관리자 아이디',
-  password      VARCHAR(255) NOT NULL COMMENT '암호화된 비밀번호 (평문 저장 금지)',
-  role          VARCHAR(30)  NOT NULL COMMENT '관리자 권한',
+  password      VARCHAR(100) NOT NULL COMMENT 'BCrypt 해시된 비밀번호 (평문 저장 금지)',
+  role          VARCHAR(20)  NOT NULL COMMENT '관리자 권한',
   last_login_at DATETIME     NULL     COMMENT '마지막 로그인 시간',
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
   PRIMARY KEY (id),
@@ -40,15 +41,16 @@ CREATE TABLE admin_user (
 CREATE TABLE file_upload (
   id                 BIGINT       NOT NULL AUTO_INCREMENT COMMENT '업로드 파일 고유번호',
   original_file_name VARCHAR(255) NOT NULL COMMENT '원본 파일명',
-  stored_file_name   VARCHAR(255) NOT NULL COMMENT '서버 저장 파일명',
+  stored_file_name   VARCHAR(100) NOT NULL COMMENT '서버가 만든 임의 저장 파일명',
   file_path          VARCHAR(500) NOT NULL COMMENT '비공개 저장 경로',
   file_size          BIGINT       NOT NULL COMMENT '파일 크기(byte)',
   file_extension     VARCHAR(10)  NOT NULL COMMENT '확장자',
   content_type       VARCHAR(100) NOT NULL COMMENT '콘텐츠 유형(MIME)',
-  upload_status      VARCHAR(20)  NOT NULL COMMENT '업로드 상태',
+  upload_status      VARCHAR(20)  NOT NULL COMMENT 'UPLOADED / FAILED / DELETED',
   created_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '업로드일자',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_file_upload_stored_name (stored_file_name)
+  UNIQUE KEY uk_file_upload_stored_name (stored_file_name),
+  CONSTRAINT ck_file_upload_status CHECK (upload_status IN ('UPLOADED','FAILED','DELETED'))
 ) ENGINE=InnoDB COMMENT='업로드 파일';
 
 -- [추가 2026-10-16] 판매점 데이터 업로드 이력
@@ -85,15 +87,17 @@ CREATE TABLE draw_round (
   number_5     INT         NOT NULL COMMENT '당첨번호 5',
   number_6     INT         NOT NULL COMMENT '당첨번호 6',
   bonus_number INT         NOT NULL COMMENT '보너스 번호',
-  data_source  VARCHAR(50) NOT NULL COMMENT '데이터 출처',
+  data_source  VARCHAR(30) NOT NULL COMMENT '데이터 출처',
   created_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
   updated_at   DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '최종수정일',
   PRIMARY KEY (id),
   UNIQUE KEY uk_draw_round_round_no (round_no),
+  KEY idx_draw_round_date (draw_date),
+  -- 번호는 1~45, 오름차순으로 저장한다 (수집기가 정렬 후 저장)
   CONSTRAINT ck_draw_round_numbers CHECK (
-    number_1 BETWEEN 1 AND 45 AND number_2 BETWEEN 1 AND 45 AND number_3 BETWEEN 1 AND 45 AND
-    number_4 BETWEEN 1 AND 45 AND number_5 BETWEEN 1 AND 45 AND number_6 BETWEEN 1 AND 45 AND
-    bonus_number BETWEEN 1 AND 45)
+    number_1 BETWEEN 1 AND 45 AND number_6 BETWEEN 1 AND 45 AND bonus_number BETWEEN 1 AND 45 AND
+    number_1 < number_2 AND number_2 < number_3 AND number_3 < number_4 AND
+    number_4 < number_5 AND number_5 < number_6)
 ) ENGINE=InnoDB COMMENT='회차별 당첨번호';
 
 CREATE TABLE draw_prize (
@@ -117,17 +121,18 @@ CREATE TABLE draw_prize (
 -- 발급 기록 (발급 확정 시 issue_number 와 같은 트랜잭션으로 저장)
 CREATE TABLE number_issue (
   id                     BIGINT       NOT NULL AUTO_INCREMENT COMMENT '발급 기록 고유번호',
-  issue_code             VARCHAR(30)  NOT NULL COMMENT '발급코드 (10자 이상, 추측하기 어려운 값)',
-  guest_token            VARCHAR(100) NOT NULL COMMENT '게스트 식별값',
+  issue_code             VARCHAR(20)  NOT NULL COMMENT '발급코드 (10자 이상, 추측하기 어려운 영숫자)',
+  guest_token            VARCHAR(64)  NOT NULL COMMENT '게스트 식별값',
   target_round_no        INT          NOT NULL COMMENT '대상 회차 번호. 미래 회차 발급을 위해 FK로 묶지 않는다.',
-  game_count             INT          NOT NULL COMMENT '생성 게임 수',
-  issue_type             VARCHAR(30)  NOT NULL COMMENT '번호 생성 방식',
+  game_count             INT          NOT NULL COMMENT '확정한 게임 수',
+  issue_type             VARCHAR(30)  NOT NULL COMMENT '번호 생성 방식 (초안: STAT_AUTO / STAT_CUSTOM / DREAM / ANALYST, 확정 전)',
   generation_basis_type  VARCHAR(30)  NULL COMMENT '[추가 2026-10-16] 생성 근거 유형. 예: STAT_PATTERN. 쓰지 않으면 NULL',
   generation_basis_value VARCHAR(50)  NULL COMMENT '[추가 2026-10-16] 생성 근거값. 예: pattern_code(HOT_NUMBER 등)',
   created_at             DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '발급일자',
   PRIMARY KEY (id),
   UNIQUE KEY uk_number_issue_code (issue_code),
-  KEY idx_number_issue_guest_round (guest_token, target_round_no),
+  KEY idx_number_issue_guest_created (guest_token, created_at),
+  KEY idx_number_issue_target_round (target_round_no),
   CONSTRAINT ck_number_issue_game_count CHECK (game_count >= 1)
 ) ENGINE=InnoDB COMMENT='번호 발급 기록';
 
@@ -135,7 +140,7 @@ CREATE TABLE issue_number (
   id              BIGINT      NOT NULL AUTO_INCREMENT COMMENT '발급 번호 고유번호',
   number_issue_id BIGINT      NOT NULL COMMENT '발급 기록 고유번호',
   game_order      INT         NOT NULL COMMENT '게임 순서',
-  combo_key       VARCHAR(20) NOT NULL COMMENT '오름차순 번호를 연결한 중복 검사용 키',
+  combo_key       VARCHAR(17) NOT NULL COMMENT '오름차순 번호 키. 예: 03-08-18-27-33-41',
   number_1        INT         NOT NULL COMMENT '발급번호 1',
   number_2        INT         NOT NULL COMMENT '발급번호 2',
   number_3        INT         NOT NULL COMMENT '발급번호 3',
@@ -145,7 +150,7 @@ CREATE TABLE issue_number (
   created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성일자',
   PRIMARY KEY (id),
   UNIQUE KEY uk_issue_number_order (number_issue_id, game_order),
-  KEY idx_issue_number_issue_combo (number_issue_id, combo_key),
+  KEY idx_issue_number_combo (combo_key),
   CONSTRAINT fk_issue_number_issue FOREIGN KEY (number_issue_id) REFERENCES number_issue (id),
   -- 번호는 1~45, 오름차순으로 저장한다
   CONSTRAINT ck_issue_number_asc CHECK (
@@ -154,21 +159,20 @@ CREATE TABLE issue_number (
     number_4 < number_5 AND number_5 < number_6)
 ) ENGINE=InnoDB COMMENT='발급 번호 조합';
 
--- [추가 2026-10-16] 조합별 확정 발급 횟수 (같은 회차 + 같은 조합, 서비스 전체 기준)
--- 발급 확정 트랜잭션 안에서 "issue_count < 최대 횟수(3, 설정값)"일 때만 1 증가시킨다.
+-- 조합 제공 횟수 (같은 회차 + 같은 조합, 서비스 전체 기준, 확정 발급만 집계)
+-- 발급 확정 트랜잭션 안에서 "issued_count < 최대 횟수(설정값, 기본 3)"일 때만 1 증가시킨다.
 -- 회차가 바뀌면 (target_round_no 가 다르면) 새 행이므로 횟수가 새로 시작한다.
--- target_round_no 는 아직 추첨 전인 회차일 수 있어 FK로 묶지 않는다.
+-- 다른 테이블과 FK로 묶지 않고 number_issue.target_round_no / issue_number.combo_key 를 논리적으로 참조한다.
 CREATE TABLE combo_issue_count (
-  id              BIGINT      NOT NULL AUTO_INCREMENT COMMENT '조합 발급 횟수 고유번호',
+  id              BIGINT      NOT NULL AUTO_INCREMENT COMMENT '조합 제공 횟수 고유번호',
   target_round_no INT         NOT NULL COMMENT '대상 회차 번호. FK로 묶지 않는다.',
-  combo_key       VARCHAR(20) NOT NULL COMMENT '오름차순 번호를 연결한 조합 키 (issue_number.combo_key 와 같은 형식)',
-  issue_count     INT         NOT NULL DEFAULT 0 COMMENT '확정 발급 횟수',
-  created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '최초 발급일자',
-  updated_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '최종 발급일자',
+  combo_key       VARCHAR(17) NOT NULL COMMENT '오름차순 번호 키. 예: 03-08-18-27-33-41',
+  issued_count    INT         NOT NULL DEFAULT 0 COMMENT '확정 발급 누적 횟수',
+  updated_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '최종 갱신일',
   PRIMARY KEY (id),
   UNIQUE KEY uk_combo_issue_count_round_combo (target_round_no, combo_key),
-  CONSTRAINT ck_combo_issue_count_nonneg CHECK (issue_count >= 0)
-) ENGINE=InnoDB COMMENT='조합별 확정 발급 횟수';
+  CONSTRAINT ck_combo_issue_count_nonneg CHECK (issued_count >= 0)
+) ENGINE=InnoDB COMMENT='조합 제공 횟수';
 
 CREATE TABLE winning_verification (
   id              BIGINT      NOT NULL AUTO_INCREMENT COMMENT '검증 결과 고유번호',
@@ -177,13 +181,16 @@ CREATE TABLE winning_verification (
   match_count     INT         NOT NULL COMMENT '당첨번호 일치 개수',
   bonus_matched   TINYINT(1)  NOT NULL DEFAULT 0 COMMENT '보너스 번호 일치 여부',
   winning_rank    INT         NULL     COMMENT '당첨 등수. 낙첨이면 NULL',
-  result_status   VARCHAR(20) NOT NULL COMMENT '검증 상태',
+  result_status   VARCHAR(20) NOT NULL COMMENT 'VERIFIED / ERROR',
+  is_public       TINYINT(1)  NOT NULL DEFAULT 0 COMMENT '우리 서비스 당첨 기록 공개 여부',
   verified_at     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '검증일자',
   PRIMARY KEY (id),
   UNIQUE KEY uk_winning_verification_issue_number (issue_number_id),
-  KEY idx_winning_verification_round (round_no),
+  KEY idx_winning_verification_round_rank (round_no, winning_rank),
+  KEY idx_winning_verification_public (is_public, round_no),
   CONSTRAINT fk_winning_verification_issue_number FOREIGN KEY (issue_number_id) REFERENCES issue_number (id),
   CONSTRAINT fk_winning_verification_round FOREIGN KEY (round_no) REFERENCES draw_round (round_no),
+  CONSTRAINT ck_winning_verification_status CHECK (result_status IN ('VERIFIED','ERROR')),
   CONSTRAINT ck_winning_verification_match CHECK (match_count BETWEEN 0 AND 6),
   CONSTRAINT ck_winning_verification_rank CHECK (winning_rank IS NULL OR winning_rank BETWEEN 1 AND 5)
 ) ENGINE=InnoDB COMMENT='당첨 검증 결과';
@@ -197,7 +204,7 @@ CREATE TABLE lotto_statistics (
   base_round_no   INT          NOT NULL COMMENT '기준 회차 번호',
   stat_type       VARCHAR(30)  NOT NULL COMMENT '통계 유형',
   stat_key        VARCHAR(50)  NOT NULL COMMENT '통계 기준값',
-  stat_value      VARCHAR(255) NOT NULL COMMENT '통계 결과값',
+  stat_value      TEXT         NOT NULL COMMENT '통계 결과값',
   calculated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '계산일자',
   PRIMARY KEY (id),
   UNIQUE KEY uk_lotto_statistics (base_round_no, stat_type, stat_key),
@@ -244,13 +251,13 @@ CREATE TABLE stat_pattern_card (
 CREATE TABLE lotto_store (
   id                   BIGINT        NOT NULL AUTO_INCREMENT COMMENT '판매점 고유번호',
   store_name           VARCHAR(100)  NOT NULL COMMENT '판매점명',
-  road_address         VARCHAR(200)  NULL     COMMENT '도로명 주소',
-  jibun_address        VARCHAR(200)  NULL     COMMENT '지번 주소',
+  road_address         VARCHAR(255)  NULL     COMMENT '도로명 주소',
+  jibun_address        VARCHAR(255)  NULL     COMMENT '지번 주소',
   sido                 VARCHAR(30)   NULL     COMMENT '시도',
   sigungu              VARCHAR(50)   NULL     COMMENT '시군구',
   latitude             DECIMAL(10,7) NULL     COMMENT '위도. 지오코딩 전까지 NULL',
   longitude            DECIMAL(10,7) NULL     COMMENT '경도. 지오코딩 전까지 NULL',
-  store_type           VARCHAR(20)   NULL     COMMENT '판매점 유형. 공공데이터 유형 코드값(코드 의미는 확인 필요)',
+  store_type           VARCHAR(30)   NULL     COMMENT '판매점 유형. 공공데이터 유형 코드값(코드 의미는 확인 필요)',
   geocode_status       VARCHAR(20)   NOT NULL DEFAULT 'PENDING' COMMENT '[추가 2026-10-16] PENDING / SUCCESS / FAILED. 좌표 변환 상태',
   geocoded_at          DATETIME      NULL     COMMENT '[추가 2026-10-16] 좌표 변환일자',
   source_base_date     DATE          NULL     COMMENT '[추가 2026-10-16] 공공데이터 기준일',
@@ -274,14 +281,15 @@ CREATE TABLE store_winning_history (
   lotto_store_id BIGINT      NOT NULL COMMENT '판매점 고유번호',
   round_no       INT         NOT NULL COMMENT '당첨 회차 번호',
   winning_rank   INT         NOT NULL COMMENT '당첨 등수',
-  win_type       VARCHAR(20) NULL     COMMENT '자동/수동/반자동',
+  win_type       VARCHAR(20) NOT NULL COMMENT 'AUTO / MANUAL / SEMI_AUTO',
   created_at     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
   PRIMARY KEY (id),
   KEY idx_store_winning_history_store (lotto_store_id),
-  KEY idx_store_winning_history_round (round_no),
+  KEY idx_store_winning_history_round (round_no, winning_rank),
   CONSTRAINT fk_store_winning_history_store FOREIGN KEY (lotto_store_id) REFERENCES lotto_store (id),
   CONSTRAINT fk_store_winning_history_round FOREIGN KEY (round_no) REFERENCES draw_round (round_no),
-  CONSTRAINT ck_store_winning_history_rank CHECK (winning_rank BETWEEN 1 AND 5)
+  CONSTRAINT ck_store_winning_history_rank CHECK (winning_rank BETWEEN 1 AND 5),
+  CONSTRAINT ck_store_winning_history_type CHECK (win_type IN ('AUTO','MANUAL','SEMI_AUTO'))
 ) ENGINE=InnoDB COMMENT='판매점 당첨 이력(회차별)';
 
 -- [추가 2026-10-16] 판매점별 당첨 집계 (1등 자동/수동/반자동, 2등)
@@ -315,9 +323,9 @@ CREATE TABLE anonymous_verification (
   id              BIGINT      NOT NULL AUTO_INCREMENT COMMENT '익명 인증 고유번호',
   number_issue_id BIGINT      NOT NULL COMMENT '발급 기록 고유번호',
   file_upload_id  BIGINT      NOT NULL COMMENT '인증 사진 파일. 인증 1건당 사진 1개',
-  issue_code      VARCHAR(30) NOT NULL COMMENT '발급코드',
+  issue_code      VARCHAR(20) NOT NULL COMMENT '발급코드',
   `comment`       TEXT        NULL     COMMENT '사용자 댓글',
-  review_status   VARCHAR(20) NOT NULL COMMENT '검수 상태',
+  review_status   VARCHAR(20) NOT NULL COMMENT 'PENDING / APPROVED / REJECTED / HIDDEN',
   is_public       TINYINT(1)  NOT NULL DEFAULT 0 COMMENT '승인된 인증의 공개 여부',
   admin_comment   TEXT        NULL     COMMENT '관리자 코멘트',
   created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
@@ -327,7 +335,8 @@ CREATE TABLE anonymous_verification (
   KEY idx_anonymous_verification_issue (number_issue_id),
   KEY idx_anonymous_verification_status (review_status, is_public),
   CONSTRAINT fk_anonymous_verification_issue FOREIGN KEY (number_issue_id) REFERENCES number_issue (id),
-  CONSTRAINT fk_anonymous_verification_file FOREIGN KEY (file_upload_id) REFERENCES file_upload (id)
+  CONSTRAINT fk_anonymous_verification_file FOREIGN KEY (file_upload_id) REFERENCES file_upload (id),
+  CONSTRAINT ck_anonymous_verification_status CHECK (review_status IN ('PENDING','APPROVED','REJECTED','HIDDEN'))
 ) ENGINE=InnoDB COMMENT='익명 당첨 인증';
 
 -- =====================================================================
@@ -336,20 +345,20 @@ CREATE TABLE anonymous_verification (
 
 CREATE TABLE dream_symbol (
   id             BIGINT       NOT NULL AUTO_INCREMENT COMMENT '꿈 상징 고유번호',
-  symbol_keyword VARCHAR(50)  NOT NULL COMMENT '꿈 상징 키워드(대표 상징)',
+  symbol_keyword VARCHAR(100) NOT NULL COMMENT '꿈 상징 키워드(대표 상징)',
   category       VARCHAR(30)  NOT NULL COMMENT '상징 분류',
   description    TEXT         NULL     COMMENT '상징 설명',
   is_active      TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '사용 여부',
   created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
   updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '최종수정일',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_dream_symbol_keyword (symbol_keyword)
+  UNIQUE KEY uk_dream_symbol_keyword_category (symbol_keyword, category)
 ) ENGINE=InnoDB COMMENT='꿈 상징 사전';
 
 CREATE TABLE dream_symbol_alias (
   id               BIGINT      NOT NULL AUTO_INCREMENT COMMENT '꿈 상징 별칭 고유번호',
   dream_symbol_id  BIGINT      NOT NULL COMMENT '꿈 상징 고유번호',
-  alias_keyword    VARCHAR(50) NOT NULL COMMENT '자연어 별칭 또는 유사 표현',
+  alias_keyword    VARCHAR(100) NOT NULL COMMENT '자연어 별칭 또는 유사 표현',
   alias_type       VARCHAR(30) NOT NULL COMMENT '별칭 유형',
   created_at       DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
   PRIMARY KEY (id),
@@ -388,7 +397,7 @@ CREATE TABLE dream_symbol_number (
 
 CREATE TABLE dream_source (
   id          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '꿈 데이터 출처 고유번호',
-  source_name VARCHAR(200) NOT NULL COMMENT '출처명',
+  source_name VARCHAR(100) NOT NULL COMMENT '출처명',
   source_type VARCHAR(30)  NOT NULL COMMENT '민속자료/학술자료/책/웹/심리학',
   source_url  VARCHAR(500) NULL     COMMENT '출처 URL 또는 서지 정보',
   trust_level VARCHAR(20)  NOT NULL COMMENT 'HIGH/MEDIUM/LOW',
@@ -419,37 +428,36 @@ CREATE TABLE notice (
   admin_user_id BIGINT       NOT NULL COMMENT '작성 관리자 고유번호',
   title         VARCHAR(200) NOT NULL COMMENT '제목',
   content       TEXT         NOT NULL COMMENT '내용',
-  notice_type   VARCHAR(20)  NOT NULL COMMENT '공지 유형',
+  notice_type   VARCHAR(30)  NOT NULL COMMENT 'GENERAL / IMPORTANT / MAINTENANCE',
   is_visible    TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '공개 여부',
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
   updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '최종수정일',
   PRIMARY KEY (id),
   KEY idx_notice_visible_created (is_visible, created_at),
-  CONSTRAINT fk_notice_admin FOREIGN KEY (admin_user_id) REFERENCES admin_user (id)
+  CONSTRAINT fk_notice_admin FOREIGN KEY (admin_user_id) REFERENCES admin_user (id),
+  CONSTRAINT ck_notice_type CHECK (notice_type IN ('GENERAL','IMPORTANT','MAINTENANCE'))
 ) ENGINE=InnoDB COMMENT='공지사항';
 
+-- 고정 안내 페이지. 페이지 유형당 1건이며 수정 이력은 admin_action_log 로 남긴다.
 CREATE TABLE content_page (
-  id            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '콘텐츠 고유번호',
-  page_key      VARCHAR(50)  NOT NULL COMMENT '안내 페이지 식별자',
-  title         VARCHAR(200) NOT NULL COMMENT '페이지 제목',
-  content       TEXT         NOT NULL COMMENT '페이지 내용',
-  version       INT          NOT NULL DEFAULT 1 COMMENT '콘텐츠 버전',
-  is_visible    TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '공개 여부',
-  admin_user_id BIGINT       NOT NULL COMMENT '최종 수정 관리자',
-  created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
-  updated_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '최종수정일',
+  id         BIGINT       NOT NULL AUTO_INCREMENT COMMENT '콘텐츠 페이지 고유번호',
+  page_type  VARCHAR(50)  NOT NULL COMMENT '페이지 유형 (SERVICE_INTRO, USAGE_GUIDE, PRIVACY, AI_NOTICE, NO_GUARANTEE, GAMBLING_WARNING, DISCLAIMER, CLAIM_GUIDE, FAQ)',
+  title      VARCHAR(200) NOT NULL COMMENT '제목',
+  content    TEXT         NOT NULL COMMENT '내용',
+  is_visible TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '공개 여부',
+  created_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
+  updated_at DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '최종수정일',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_content_page_key (page_key),
-  CONSTRAINT fk_content_page_admin FOREIGN KEY (admin_user_id) REFERENCES admin_user (id)
+  UNIQUE KEY uk_content_page_type (page_type)
 ) ENGINE=InnoDB COMMENT='콘텐츠 페이지';
 
 CREATE TABLE admin_action_log (
   id            BIGINT      NOT NULL AUTO_INCREMENT COMMENT '관리자 작업 로그 고유번호',
   admin_user_id BIGINT      NOT NULL COMMENT '작업 관리자 고유번호',
   action_type   VARCHAR(30) NOT NULL COMMENT '작업 유형',
-  target_type   VARCHAR(30) NOT NULL COMMENT '대상 유형',
-  target_id     BIGINT      NULL     COMMENT '대상 데이터 ID',
-  action_detail TEXT        NULL     COMMENT '작업 상세',
+  target_table  VARCHAR(50) NOT NULL COMMENT '대상 테이블',
+  target_id     BIGINT      NULL     COMMENT '대상 데이터 고유번호',
+  action_detail TEXT        NOT NULL COMMENT '작업 상세 (수정 시 변경 전후 값 포함)',
   created_at    DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '작업일자',
   PRIMARY KEY (id),
   KEY idx_admin_action_log_admin (admin_user_id, created_at),
@@ -458,64 +466,80 @@ CREATE TABLE admin_action_log (
 
 -- AI 사용 로그. 사용자 질문·꿈 원문·응답 원문은 저장하지 않는다.
 CREATE TABLE ai_usage_log (
-  id                 BIGINT      NOT NULL AUTO_INCREMENT COMMENT 'AI 사용 로그 고유번호',
-  feature_type       VARCHAR(30) NOT NULL COMMENT 'AI 기능 구분',
-  request_status     VARCHAR(20) NOT NULL COMMENT '성공/실패 상태',
-  input_token_count  INT         NULL     COMMENT '입력 토큰 수',
-  output_token_count INT         NULL     COMMENT '출력 토큰 수',
-  error_message      TEXT        NULL     COMMENT '실패 사유',
-  created_at         DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성일자',
+  id                 BIGINT        NOT NULL AUTO_INCREMENT COMMENT 'AI 사용 로그 고유번호',
+  feature_type       VARCHAR(30)   NOT NULL COMMENT 'ANALYST / DREAM',
+  request_status     VARCHAR(20)   NOT NULL COMMENT 'SUCCESS / FAILED / BLOCKED(정책 차단 또는 한도 초과)',
+  model_name         VARCHAR(50)   NULL     COMMENT '사용 모델명. AI 호출이 없었던 경우 NULL',
+  policy_code        VARCHAR(50)   NULL     COMMENT '적용된 예외처리 정책 코드. 없으면 NULL',
+  input_token_count  INT           NOT NULL DEFAULT 0 COMMENT '입력 토큰 수. AI 호출이 없으면 0',
+  output_token_count INT           NOT NULL DEFAULT 0 COMMENT '출력 토큰 수. AI 호출이 없으면 0',
+  response_time_ms   INT           NULL     COMMENT '응답 시간(ms)',
+  estimated_cost     DECIMAL(10,6) NULL     COMMENT '비용 추정값',
+  error_message      TEXT          NULL     COMMENT '실패 사유',
+  created_at         DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '생성일자',
   PRIMARY KEY (id),
-  KEY idx_ai_usage_log_feature (feature_type, created_at)
+  KEY idx_ai_usage_log_feature (feature_type, created_at),
+  KEY idx_ai_usage_log_created (created_at),
+  CONSTRAINT ck_ai_usage_log_feature CHECK (feature_type IN ('ANALYST','DREAM')),
+  CONSTRAINT ck_ai_usage_log_status CHECK (request_status IN ('SUCCESS','FAILED','BLOCKED'))
 ) ENGINE=InnoDB COMMENT='AI 사용 로그';
 
--- [추가 2026-10-16] AI 입력 정책 (AI 기능별 입력 기준). [초안] 컬럼 구성은 확인 후 확정한다.
+-- AI 예외처리 정책. 저비용 판단 AI 또는 규칙 기반 분류 결과에 따라 Spring Boot 가 정책을 실행한다.
+-- 정책 코드·처리 방식·우선순위·안내 문구는 DB에서 관리한다. (채팅 원문은 저장하지 않는다)
 CREATE TABLE ai_input_policy (
-  id               BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'AI 입력 정책 고유번호',
-  feature_type     VARCHAR(30)  NOT NULL COMMENT '적용 AI 기능 구분 (ai_usage_log.feature_type 과 같은 값)',
-  max_input_length INT          NOT NULL COMMENT '허용하는 최대 입력 글자 수',
-  is_enabled       TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '정책 사용 여부',
-  description      VARCHAR(200) NULL     COMMENT '정책 설명',
+  id               BIGINT       NOT NULL AUTO_INCREMENT COMMENT '정책 고유번호',
+  policy_code      VARCHAR(50)  NOT NULL COMMENT '예외처리 정책 코드',
+  policy_name      VARCHAR(100) NOT NULL COMMENT '정책 이름',
+  feature_scope    VARCHAR(30)  NOT NULL COMMENT '적용 기능 구분 (ai_usage_log.feature_type 값과 맞춘다)',
+  policy_type      VARCHAR(30)  NOT NULL COMMENT '정책 분류 (값은 확정 전)',
+  action_type      VARCHAR(30)  NOT NULL COMMENT '처리 방식 (값은 확정 전)',
+  priority         INT          NOT NULL COMMENT '처리 우선순위',
+  response_message TEXT          NOT NULL COMMENT '사용자 안내 문구',
+  is_active        TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '정책 활성화 여부',
   created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
   updated_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '최종수정일',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_ai_input_policy_feature (feature_type),
-  CONSTRAINT ck_ai_input_policy_length CHECK (max_input_length >= 1)
-) ENGINE=InnoDB COMMENT='AI 입력 정책';
+  UNIQUE KEY uk_ai_input_policy_code (policy_code),
+  KEY idx_ai_input_policy_scope (feature_scope, priority)
+) ENGINE=InnoDB COMMENT='AI 예외처리 정책';
 
--- [추가 2026-10-16] AI 입력 정책 키워드 (차단어 / 허용 주제어). [초안] 컬럼 구성은 확인 후 확정한다.
+-- AI 예외처리 핵심 키워드. 키워드 일치만으로 차단하지 않고 AI 가 문맥을 검토한다.
 CREATE TABLE ai_policy_keyword (
-  id           BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'AI 정책 키워드 고유번호',
-  policy_id    BIGINT       NOT NULL COMMENT 'AI 입력 정책 고유번호',
-  keyword      VARCHAR(100) NOT NULL COMMENT '키워드',
-  keyword_type VARCHAR(10)  NOT NULL COMMENT 'BLOCK(차단어) / ALLOW(허용 주제어)',
-  is_active    TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '사용 여부',
-  created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
+  id                 BIGINT       NOT NULL AUTO_INCREMENT COMMENT '키워드 고유번호',
+  ai_input_policy_id BIGINT       NOT NULL COMMENT '연결된 예외처리 정책',
+  keyword            VARCHAR(255) NOT NULL COMMENT '예외처리 판단 참고 키워드',
+  match_type         VARCHAR(30)  NOT NULL COMMENT 'EXACT / CONTAINS',
+  is_active          TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '키워드 사용 여부',
+  created_at         DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_ai_policy_keyword (policy_id, keyword),
-  CONSTRAINT fk_ai_policy_keyword_policy FOREIGN KEY (policy_id) REFERENCES ai_input_policy (id),
-  CONSTRAINT ck_ai_policy_keyword_type CHECK (keyword_type IN ('BLOCK','ALLOW'))
-) ENGINE=InnoDB COMMENT='AI 입력 정책 키워드';
+  KEY idx_ai_policy_keyword_policy (ai_input_policy_id),
+  CONSTRAINT fk_ai_policy_keyword_policy FOREIGN KEY (ai_input_policy_id) REFERENCES ai_input_policy (id),
+  CONSTRAINT ck_ai_policy_keyword_match CHECK (match_type IN ('EXACT','CONTAINS'))
+) ENGINE=InnoDB COMMENT='AI 예외처리 핵심 키워드';
 
 CREATE TABLE api_error_log (
   id            BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'API 오류 로그 고유번호',
   api_name      VARCHAR(50)  NOT NULL COMMENT 'API 이름',
-  request_url   VARCHAR(500) NULL     COMMENT '요청 URL (개인정보·위치 값 제외)',
+  error_type    VARCHAR(30)  NOT NULL COMMENT '오류 유형 (관리자 화면 필터용)',
+  request_url   VARCHAR(500) NULL     COMMENT '요청 URL (키·발급코드 등 민감값은 마스킹, 위치 값 제외). 설계서는 NOT NULL이나 URL이 없는 오류를 기록할 수 있도록 NULL 허용',
   http_status   INT          NULL     COMMENT 'HTTP 상태 코드',
-  error_message TEXT         NULL     COMMENT '오류 메시지',
+  error_message TEXT         NOT NULL COMMENT '오류 메시지',
   created_at    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '발생일자',
   PRIMARY KEY (id),
-  KEY idx_api_error_log_created (created_at)
+  KEY idx_api_error_log_created (created_at),
+  KEY idx_api_error_log_api (api_name, created_at)
 ) ENGINE=InnoDB COMMENT='API 오류 로그';
 
 CREATE TABLE scheduler_log (
   id              BIGINT      NOT NULL AUTO_INCREMENT COMMENT '스케줄러 로그 고유번호',
   job_name        VARCHAR(50) NOT NULL COMMENT '작업명',
-  job_status      VARCHAR(20) NOT NULL COMMENT '성공/실패 상태',
+  job_status      VARCHAR(20) NOT NULL COMMENT 'RUNNING / SUCCESS / FAILED',
   target_round_no INT         NULL     COMMENT '[추가 2026-10-16] 작업 대상 회차. 회차와 무관한 작업은 NULL',
   started_at      DATETIME    NOT NULL COMMENT '시작 시간',
   ended_at        DATETIME    NULL     COMMENT '종료 시간',
+  processed_count INT         NULL     COMMENT '처리 건수',
   error_message   TEXT        NULL     COMMENT '실패 사유',
   PRIMARY KEY (id),
-  KEY idx_scheduler_log_job (job_name, started_at)
+  KEY idx_scheduler_log_job (job_name, started_at),
+  CONSTRAINT ck_scheduler_log_status CHECK (job_status IN ('RUNNING','SUCCESS','FAILED'))
 ) ENGINE=InnoDB COMMENT='스케줄러 실행 로그';
