@@ -1,13 +1,14 @@
 -- =====================================================================
 -- 포르투나볼 AI  DB 스키마 (MySQL 8.0 이상)
--- 기준 문서: 포르투나볼_DB설계서_2026-10-16.md (테이블 27개)
+-- 기준 문서: 포르투나볼_DB설계서_2026-10-16.md (테이블 30개)
 -- DB명: fortuna_ball / 문자셋: utf8mb4
 --
 -- 작성 기준
 --  * 생성 순서는 FK 참조 순서를 따른다 (참조되는 테이블을 먼저 만든다).
 --  * 범위·순서가 정해진 값은 CHECK 제약으로 막는다 (MySQL 8.0.16 이상에서 동작).
 --  * [추가 2026-10-16] 표시는 이번에 새로 넣은 테이블·컬럼이다.
---  * 번호 3회 제한(같은 게스트·회차·조합)은 UNIQUE가 아니라 서비스 로직으로 검사한다.
+--  * 번호 3회 제한(같은 회차·같은 조합, 서비스 전체, 확정 발급만 집계)은 UNIQUE가 아니라
+--    combo_issue_count 의 횟수를 "3 미만일 때만 +1" 하는 한 문장 UPDATE 로 처리한다.
 --  * number_issue.target_round_no, stat_round_snapshot.target_round_no 는
 --    아직 추첨되지 않은 회차를 가리킬 수 있어 FK로 묶지 않는다.
 -- =====================================================================
@@ -152,6 +153,22 @@ CREATE TABLE issue_number (
     number_1 < number_2 AND number_2 < number_3 AND number_3 < number_4 AND
     number_4 < number_5 AND number_5 < number_6)
 ) ENGINE=InnoDB COMMENT='발급 번호 조합';
+
+-- [추가 2026-10-16] 조합별 확정 발급 횟수 (같은 회차 + 같은 조합, 서비스 전체 기준)
+-- 발급 확정 트랜잭션 안에서 "issue_count < 최대 횟수(3, 설정값)"일 때만 1 증가시킨다.
+-- 회차가 바뀌면 (target_round_no 가 다르면) 새 행이므로 횟수가 새로 시작한다.
+-- target_round_no 는 아직 추첨 전인 회차일 수 있어 FK로 묶지 않는다.
+CREATE TABLE combo_issue_count (
+  id              BIGINT      NOT NULL AUTO_INCREMENT COMMENT '조합 발급 횟수 고유번호',
+  target_round_no INT         NOT NULL COMMENT '대상 회차 번호. FK로 묶지 않는다.',
+  combo_key       VARCHAR(20) NOT NULL COMMENT '오름차순 번호를 연결한 조합 키 (issue_number.combo_key 와 같은 형식)',
+  issue_count     INT         NOT NULL DEFAULT 0 COMMENT '확정 발급 횟수',
+  created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '최초 발급일자',
+  updated_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '최종 발급일자',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_combo_issue_count_round_combo (target_round_no, combo_key),
+  CONSTRAINT ck_combo_issue_count_nonneg CHECK (issue_count >= 0)
+) ENGINE=InnoDB COMMENT='조합별 확정 발급 횟수';
 
 CREATE TABLE winning_verification (
   id              BIGINT      NOT NULL AUTO_INCREMENT COMMENT '검증 결과 고유번호',
@@ -451,6 +468,34 @@ CREATE TABLE ai_usage_log (
   PRIMARY KEY (id),
   KEY idx_ai_usage_log_feature (feature_type, created_at)
 ) ENGINE=InnoDB COMMENT='AI 사용 로그';
+
+-- [추가 2026-10-16] AI 입력 정책 (AI 기능별 입력 기준). [초안] 컬럼 구성은 확인 후 확정한다.
+CREATE TABLE ai_input_policy (
+  id               BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'AI 입력 정책 고유번호',
+  feature_type     VARCHAR(30)  NOT NULL COMMENT '적용 AI 기능 구분 (ai_usage_log.feature_type 과 같은 값)',
+  max_input_length INT          NOT NULL COMMENT '허용하는 최대 입력 글자 수',
+  is_enabled       TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '정책 사용 여부',
+  description      VARCHAR(200) NULL     COMMENT '정책 설명',
+  created_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
+  updated_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '최종수정일',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_ai_input_policy_feature (feature_type),
+  CONSTRAINT ck_ai_input_policy_length CHECK (max_input_length >= 1)
+) ENGINE=InnoDB COMMENT='AI 입력 정책';
+
+-- [추가 2026-10-16] AI 입력 정책 키워드 (차단어 / 허용 주제어). [초안] 컬럼 구성은 확인 후 확정한다.
+CREATE TABLE ai_policy_keyword (
+  id           BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'AI 정책 키워드 고유번호',
+  policy_id    BIGINT       NOT NULL COMMENT 'AI 입력 정책 고유번호',
+  keyword      VARCHAR(100) NOT NULL COMMENT '키워드',
+  keyword_type VARCHAR(10)  NOT NULL COMMENT 'BLOCK(차단어) / ALLOW(허용 주제어)',
+  is_active    TINYINT(1)   NOT NULL DEFAULT 1 COMMENT '사용 여부',
+  created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_ai_policy_keyword (policy_id, keyword),
+  CONSTRAINT fk_ai_policy_keyword_policy FOREIGN KEY (policy_id) REFERENCES ai_input_policy (id),
+  CONSTRAINT ck_ai_policy_keyword_type CHECK (keyword_type IN ('BLOCK','ALLOW'))
+) ENGINE=InnoDB COMMENT='AI 입력 정책 키워드';
 
 CREATE TABLE api_error_log (
   id            BIGINT       NOT NULL AUTO_INCREMENT COMMENT 'API 오류 로그 고유번호',
