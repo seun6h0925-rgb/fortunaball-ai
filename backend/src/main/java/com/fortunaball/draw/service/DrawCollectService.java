@@ -32,6 +32,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *    적용되지 않는 스프링의 함정이 있어서, 코드로 범위를 직접 정했다.
  *  - 한 회차가 실패해도 멈추지 않고 다음 회차로 간다. 단, 연속으로 N번 실패하면 사이트 문제로 보고 중단한다.
  *  - 수집은 한 번에 하나만 돈다. 이미 돌고 있을 때 또 호출하면 아무것도 하지 않고 "이미 실행 중"으로 끝낸다.
+ *  - 새 회차를 저장한 뒤에는 반드시 회차 캐시를 비운다(DrawCacheEvictor). 안 비우면 API-01 이 예전 회차를 최신으로 보여 준다.
+ *    비우는 시점은 트랜잭션이 끝난 "다음"이다. (저장 확정 전에 비우면, 그 사이 조회가 옛 데이터를 다시 캐시에 담을 수 있음)
  *  - 요청 사이에 간격을 둔다 (공식 서버 부담 방지). 이미 있어서 건너뛴 회차는 요청을 안 보내므로 간격도 없다.
  */
 @Service
@@ -46,6 +48,7 @@ public class DrawCollectService {
     private final DrawRoundRepository roundRepository;
     private final DrawPrizeRepository prizeRepository;
     private final TransactionTemplate transactionTemplate;
+    private final DrawCacheEvictor cacheEvictor;
     private final long requestDelayMs;
     private final int maxConsecutiveFailures;
     /** 수집이 지금 돌고 있는지. 서버 시작 수집과 매주 스케줄러가 겹쳐 같은 회차를 동시에 저장하는 일을 막는다. */
@@ -56,12 +59,14 @@ public class DrawCollectService {
             DrawRoundRepository roundRepository,
             DrawPrizeRepository prizeRepository,
             TransactionTemplate transactionTemplate,
+            DrawCacheEvictor cacheEvictor,
             @Value("${fortuna.draw.request-delay-ms:300}") long requestDelayMs,
             @Value("${fortuna.draw.max-consecutive-failures:5}") int maxConsecutiveFailures) {
         this.collector = collector;
         this.roundRepository = roundRepository;
         this.prizeRepository = prizeRepository;
         this.transactionTemplate = transactionTemplate;
+        this.cacheEvictor = cacheEvictor;
         this.requestDelayMs = requestDelayMs;
         this.maxConsecutiveFailures = maxConsecutiveFailures;
     }
@@ -169,6 +174,7 @@ public class DrawCollectService {
             log.debug("[회차수집] {}회 저장 완료 (id={})", roundNo, round.getId());
             return null;
         });
+        cacheEvictor.evictRound(roundNo);   // 저장이 확정된 뒤에 캐시를 비운다
         return CollectOutcome.SAVED;
     }
 
