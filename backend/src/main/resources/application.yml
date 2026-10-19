@@ -37,6 +37,7 @@ fortuna:
   # 조회 횟수 제한 (common.security.RateLimitProperties 가 읽는다)
   rate-limit:
     issue-lookup-per-minute: 30      # 발급코드 상세 조회(API-05)를 한 접속지(IP)에서 1분에 부를 수 있는 횟수. 넘으면 429
+    issue-result-per-minute: 30      # 당첨 검증 결과 조회(API-06)를 한 접속지(IP)에서 1분에 부를 수 있는 횟수. 넘으면 429
 
 server:
   port: 8080
