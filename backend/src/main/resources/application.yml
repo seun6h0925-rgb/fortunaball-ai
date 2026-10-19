@@ -33,6 +33,7 @@ fortuna:
   generate:
     ttl-minutes: 30                  # 임시 결과를 보관하는 시간 (분). 이 시간이 지나면 확정할 수 없다.
     max-games: 50                    # 한 번에 만들 수 있는 최대 게임 수 (1~이 값)
+    max-issue-per-combo: 3           # 같은 회차에서 같은 조합을 확정 발급할 수 있는 최대 횟수 (이 횟수가 찬 조합은 번호 생성에서 제외)
 
 server:
   port: 8080
