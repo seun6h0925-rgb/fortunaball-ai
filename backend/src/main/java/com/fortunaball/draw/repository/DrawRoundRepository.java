@@ -1,6 +1,7 @@
 package com.fortunaball.draw.repository;
 
 import com.fortunaball.draw.domain.DrawRound;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -29,4 +30,10 @@ public interface DrawRoundRepository extends JpaRepository<DrawRound, Long> {
 
     /** 회차 번호 순서대로 전체 (처음부터 끝까지 통계를 볼 때 사용) */
     List<DrawRound> findAllByOrderByRoundNoAsc();
+
+    /**
+     * 지정한 회차까지(포함)의 최근 회차를 최신순으로, pageable 의 크기만큼 가져온다. (통계 스냅샷 계산용)
+     * 예) findByRoundNoLessThanEqualOrderByRoundNoDesc(1246, PageRequest.of(0, 120)) → 1246회부터 거꾸로 120회
+     */
+    List<DrawRound> findByRoundNoLessThanEqualOrderByRoundNoDesc(int roundNo, Pageable pageable);
 }
