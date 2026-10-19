@@ -8,6 +8,7 @@ import com.fortunaball.draw.dto.CollectSummary;
 import com.fortunaball.draw.dto.DrawApiResponse;
 import com.fortunaball.draw.repository.DrawPrizeRepository;
 import com.fortunaball.draw.repository.DrawRoundRepository;
+import com.fortunaball.stat.service.StatSnapshotTrigger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,6 +40,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *    성공 = 실패 회차가 없고 "마지막 회차까지 확인 완료"로 끝난 경우. 그 외(실패 회차 있음, 연속 실패 중단 등)는 FAILED.
  *    "이미 실행 중이라 건너뜀"은 수집이 돈 것이 아니므로 기록하지 않는다.
  *  - 요청 사이에 간격을 둔다 (공식 서버 부담 방지). 이미 있어서 건너뛴 회차는 요청을 안 보내므로 간격도 없다.
+ *  - 수집이 끝났을 때 새로 저장한 회차가 1개 이상이면 회차별 통계를 지금 상황에 맞춘다(StatSnapshotTrigger).
+ *    (예: 1247회 결과가 저장되면 1247회 통계가 "확정"으로, 1248회 통계가 새 기준으로 다시 계산된다)
+ *    회차마다 부르지 않고 "수집이 끝난 뒤 한 번"만 부른다. 1회~최신 회차를 처음 채울 때 통계 계산이 수천 번 도는 것을 막기 위해서다.
+ *    통계 맞춤이 실패해도 수집 결과에는 영향이 없다 (Trigger 가 오류를 밖으로 던지지 않고 로그에만 남긴다).
  */
 @Service
 public class DrawCollectService {
@@ -61,6 +66,7 @@ public class DrawCollectService {
     private final TransactionTemplate transactionTemplate;
     private final DrawCacheEvictor cacheEvictor;
     private final SchedulerLogRecorder schedulerLogRecorder;
+    private final StatSnapshotTrigger statSnapshotTrigger;
     private final long requestDelayMs;
     private final int maxConsecutiveFailures;
     /** 수집이 지금 돌고 있는지. 서버 시작 수집과 매주 스케줄러가 겹쳐 같은 회차를 동시에 저장하는 일을 막는다. */
@@ -73,6 +79,7 @@ public class DrawCollectService {
             TransactionTemplate transactionTemplate,
             DrawCacheEvictor cacheEvictor,
             SchedulerLogRecorder schedulerLogRecorder,
+            StatSnapshotTrigger statSnapshotTrigger,
             @Value("${fortuna.draw.request-delay-ms:300}") long requestDelayMs,
             @Value("${fortuna.draw.max-consecutive-failures:5}") int maxConsecutiveFailures) {
         this.collector = collector;
@@ -81,6 +88,7 @@ public class DrawCollectService {
         this.transactionTemplate = transactionTemplate;
         this.cacheEvictor = cacheEvictor;
         this.schedulerLogRecorder = schedulerLogRecorder;
+        this.statSnapshotTrigger = statSnapshotTrigger;
         this.requestDelayMs = requestDelayMs;
         this.maxConsecutiveFailures = maxConsecutiveFailures;
     }
@@ -100,6 +108,10 @@ public class DrawCollectService {
         try {
             CollectSummary summary = doCollectAll();
             recordResult(logId, summary);
+            if (summary.saved() > 0) {
+                // 새 회차가 저장됐으니 통계를 맞춘다. 실패해도 예외가 나오지 않는다.
+                statSnapshotTrigger.refresh("새 회차 저장 (" + jobName + ")");
+            }
             return summary;
         } catch (RuntimeException e) {
             schedulerLogRecorder.failed(logId, 0, "예기치 못한 오류: " + e);
