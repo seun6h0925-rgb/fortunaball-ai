@@ -10,7 +10,7 @@ import java.util.regex.Pattern;
  *
  * ⚠ 헷갈리기 쉬운 점
  *  - 토큰은 사용자가 마음대로 바꿀 수 있는 값이다. 그래서 "같은 조합 3회 제한"은 토큰이 아니라 서비스 전체 기준이다.
- *  - 형식: 영문·숫자·'-' 만, 16~128자. (DB number_issue.guest_token 이 VARCHAR(128))
+ *  - 형식: 영문·숫자·'-' 만, 16~64자. (DB number_issue.guest_token 이 VARCHAR(64) 라서 같은 길이로 맞춤)
  *  - 토큰 값은 개인 식별에 가까우므로 로그·오류 상세에 값 자체를 남기지 않는다. (길이만 남김)
  *  - toString() 도 마스킹해서, 실수로 로그에 찍혀도 값이 나가지 않게 한다.
  */
@@ -18,7 +18,7 @@ public record GuestToken(String value) {
 
     public static final String HEADER_NAME = "X-Guest-Token";
 
-    private static final Pattern FORMAT = Pattern.compile("^[A-Za-z0-9-]{16,128}$");
+    private static final Pattern FORMAT = Pattern.compile("^[A-Za-z0-9-]{16,64}$");
 
     /** 헤더 값으로 토큰을 만든다. 없거나 형식이 틀리면 BusinessException(COMMON-001) */
     public static GuestToken of(String raw) {
