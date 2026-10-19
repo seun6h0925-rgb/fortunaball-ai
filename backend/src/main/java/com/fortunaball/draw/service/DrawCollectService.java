@@ -34,6 +34,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *  - 수집은 한 번에 하나만 돈다. 이미 돌고 있을 때 또 호출하면 아무것도 하지 않고 "이미 실행 중"으로 끝낸다.
  *  - 새 회차를 저장한 뒤에는 반드시 회차 캐시를 비운다(DrawCacheEvictor). 안 비우면 API-01 이 예전 회차를 최신으로 보여 준다.
  *    비우는 시점은 트랜잭션이 끝난 "다음"이다. (저장 확정 전에 비우면, 그 사이 조회가 옛 데이터를 다시 캐시에 담을 수 있음)
+ *  - 수집이 실제로 돌 때마다 실행 기록(scheduler_log)을 남긴다. (SchedulerLogRecorder)
+ *    작업 이름으로 누가 불렀는지 구분한다: 서버 시작=DRAW_COLLECT_STARTUP, 스케줄러=DRAW_COLLECT_SCHEDULED.
+ *    성공 = 실패 회차가 없고 "마지막 회차까지 확인 완료"로 끝난 경우. 그 외(실패 회차 있음, 연속 실패 중단 등)는 FAILED.
+ *    "이미 실행 중이라 건너뜀"은 수집이 돈 것이 아니므로 기록하지 않는다.
  *  - 요청 사이에 간격을 둔다 (공식 서버 부담 방지). 이미 있어서 건너뛴 회차는 요청을 안 보내므로 간격도 없다.
  */
 @Service
@@ -44,11 +48,19 @@ public class DrawCollectService {
     /** 무한 반복 방지용 안전 상한 (로또가 이 회차까지 가려면 수십 년이 더 걸린다) */
     private static final int MAX_ROUND = 5000;
 
+    /** 실행 기록(scheduler_log)의 작업 이름 */
+    public static final String JOB_STARTUP = "DRAW_COLLECT_STARTUP";
+    public static final String JOB_SCHEDULED = "DRAW_COLLECT_SCHEDULED";
+
+    /** 정상적으로 끝났을 때의 종료 사유. 성공 여부를 판단할 때 이 글자와 비교한다. */
+    private static final String STOP_COMPLETE = "마지막 회차까지 확인 완료";
+
     private final DrawCollector collector;
     private final DrawRoundRepository roundRepository;
     private final DrawPrizeRepository prizeRepository;
     private final TransactionTemplate transactionTemplate;
     private final DrawCacheEvictor cacheEvictor;
+    private final SchedulerLogRecorder schedulerLogRecorder;
     private final long requestDelayMs;
     private final int maxConsecutiveFailures;
     /** 수집이 지금 돌고 있는지. 서버 시작 수집과 매주 스케줄러가 겹쳐 같은 회차를 동시에 저장하는 일을 막는다. */
@@ -60,6 +72,7 @@ public class DrawCollectService {
             DrawPrizeRepository prizeRepository,
             TransactionTemplate transactionTemplate,
             DrawCacheEvictor cacheEvictor,
+            SchedulerLogRecorder schedulerLogRecorder,
             @Value("${fortuna.draw.request-delay-ms:300}") long requestDelayMs,
             @Value("${fortuna.draw.max-consecutive-failures:5}") int maxConsecutiveFailures) {
         this.collector = collector;
@@ -67,20 +80,43 @@ public class DrawCollectService {
         this.prizeRepository = prizeRepository;
         this.transactionTemplate = transactionTemplate;
         this.cacheEvictor = cacheEvictor;
+        this.schedulerLogRecorder = schedulerLogRecorder;
         this.requestDelayMs = requestDelayMs;
         this.maxConsecutiveFailures = maxConsecutiveFailures;
     }
 
     /** 1회부터 최신 회차까지 빠진 회차를 전부 채운다. 마지막 회차를 지나(데이터 없음) 끝나면 정상 완료. */
     public CollectSummary collectAll() {
+        return collectAll(JOB_STARTUP);
+    }
+
+    /** 작업 이름을 지정해서 수집한다. (스케줄러는 JOB_SCHEDULED 를 넘긴다) */
+    public CollectSummary collectAll(String jobName) {
         if (!running.compareAndSet(false, true)) {
             log.warn("[회차수집] 이미 수집이 진행 중이라 이번 요청은 건너뜀");
             return new CollectSummary(0, 0, 0, List.of(), 0, "이미 실행 중이라 건너뜀");
         }
+        Long logId = schedulerLogRecorder.start(jobName, null);
         try {
-            return doCollectAll();
+            CollectSummary summary = doCollectAll();
+            recordResult(logId, summary);
+            return summary;
+        } catch (RuntimeException e) {
+            schedulerLogRecorder.failed(logId, 0, "예기치 못한 오류: " + e);
+            throw e;
         } finally {
             running.set(false);   // 오류가 나도 반드시 풀어 둔다 (안 풀면 이후 수집이 영영 안 돈다)
+        }
+    }
+
+    /** 수집 결과를 실행 기록에 반영한다. 성공 조건은 클래스 설명 참고. */
+    private void recordResult(Long logId, CollectSummary summary) {
+        boolean ok = summary.failedRounds().isEmpty() && STOP_COMPLETE.equals(summary.stopReason());
+        if (ok) {
+            schedulerLogRecorder.success(logId, summary.saved());
+        } else {
+            schedulerLogRecorder.failed(logId, summary.saved(),
+                    "종료 사유: " + summary.stopReason() + " / 실패 회차: " + summary.failedRounds());
         }
     }
 
@@ -121,7 +157,7 @@ public class DrawCollectService {
             }
 
             if (outcome == CollectOutcome.NO_DATA) {
-                stopReason = "마지막 회차까지 확인 완료";
+                stopReason = STOP_COMPLETE;
                 break;
             }
             if (outcome == CollectOutcome.SAVED) {
