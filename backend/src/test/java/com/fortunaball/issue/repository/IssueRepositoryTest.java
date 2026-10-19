@@ -3,6 +3,8 @@ package com.fortunaball.issue.repository;
 import com.fortunaball.issue.domain.IssueNumber;
 import com.fortunaball.issue.domain.IssueType;
 import com.fortunaball.issue.domain.NumberIssue;
+import com.fortunaball.issue.domain.VerificationStatus;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
@@ -33,6 +35,8 @@ class IssueRepositoryTest {
     private NumberIssueRepository issueRepo;
     @Autowired
     private IssueNumberRepository numberRepo;
+    @Autowired
+    private EntityManager em;
 
     @Test
     void 횟수_행은_한번만_만들어지고_3번까지만_올라간다() {
@@ -77,5 +81,45 @@ class IssueRepositoryTest {
         assertEquals(2, saved.size());
         assertEquals(List.of(3, 8, 18, 27, 33, 41), saved.get(0).numbers());
         assertEquals(KEY, saved.get(0).getComboKey());
+    }
+
+    @Test
+    void 검증_현황이_발급건별로_집계되고_결과가_없는_게임도_전체에_센다() {
+        NumberIssue issue = issueRepo.saveAndFlush(NumberIssue.create(
+                "TESTCODE22222", "guest-aaaaaaaaaaaaaaaa", ROUND, 2, IssueType.STAT_AUTO, null, null));
+        IssueNumber a = numberRepo.saveAndFlush(IssueNumber.of(issue.getId(), 1, KEY, List.of(3, 8, 18, 27, 33, 41)));
+        numberRepo.saveAndFlush(IssueNumber.of(issue.getId(), 2, "01-02-03-04-05-06", List.of(1, 2, 3, 4, 5, 6)));
+
+        IssueNumberRepository.VerificationCount before = numberRepo.countVerification(List.of(issue.getId())).get(0);
+        assertEquals(2L, before.getTotalGames());
+        assertEquals(0L, before.getVerifiedGames());
+        assertEquals(0L, before.getErrorGames());
+
+        // 첫 게임만 검증 완료로 만든다 (draw_round 1246 은 DB 에 이미 있는 회차)
+        em.createNativeQuery("INSERT INTO winning_verification (issue_number_id, round_no, match_count, bonus_matched, winning_rank, result_status) "
+                + "VALUES (?1, 1246, 2, 0, NULL, 'VERIFIED')").setParameter(1, a.getId()).executeUpdate();
+        em.clear();
+
+        IssueNumberRepository.VerificationCount after = numberRepo.countVerification(List.of(issue.getId())).get(0);
+        assertEquals(2L, after.getTotalGames());
+        assertEquals(1L, after.getVerifiedGames());
+        assertEquals(VerificationStatus.PENDING, VerificationStatus.of(after.getTotalGames(), after.getVerifiedGames(), after.getErrorGames()));
+    }
+
+    @Test
+    void 내_기기의_발급만_최신순으로_쪽을_나눠_읽는다() {
+        String me = "guest-mmmmmmmmmmmmmmmm";
+        NumberIssue first = issueRepo.saveAndFlush(NumberIssue.create("TESTCODE33333", me, ROUND, 1, IssueType.STAT_AUTO, null, null));
+        NumberIssue second = issueRepo.saveAndFlush(NumberIssue.create("TESTCODE44444", me, ROUND, 1, IssueType.STAT_AUTO, null, null));
+        issueRepo.saveAndFlush(NumberIssue.create("TESTCODE55555", "guest-oooooooooooooooo", ROUND, 1, IssueType.STAT_AUTO, null, null));
+        em.clear();
+
+        org.springframework.data.domain.Page<NumberIssue> page = issueRepo.findByGuestTokenOrderByCreatedAtDescIdDesc(
+                me, org.springframework.data.domain.PageRequest.of(0, 1));
+        assertEquals(2, page.getTotalElements());                          // 남의 발급은 세지 않는다
+        assertEquals(2, page.getTotalPages());
+        assertEquals(second.getId(), page.getContent().get(0).getId());    // 나중에 저장한 것이 먼저
+        assertEquals(first.getId(), issueRepo.findByGuestTokenOrderByCreatedAtDescIdDesc(
+                me, org.springframework.data.domain.PageRequest.of(1, 1)).getContent().get(0).getId());
     }
 }

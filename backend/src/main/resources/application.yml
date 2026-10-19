@@ -34,6 +34,9 @@ fortuna:
     ttl-minutes: 30                  # 임시 결과를 보관하는 시간 (분). 이 시간이 지나면 확정할 수 없다.
     max-games: 50                    # 한 번에 만들 수 있는 최대 게임 수 (1~이 값)
     max-issue-per-combo: 3           # 같은 회차에서 같은 조합을 확정 발급할 수 있는 최대 횟수 (이 횟수가 찬 조합은 번호 생성에서 제외)
+  # 조회 횟수 제한 (common.security.RateLimitProperties 가 읽는다)
+  rate-limit:
+    issue-lookup-per-minute: 30      # 발급코드 상세 조회(API-05)를 한 접속지(IP)에서 1분에 부를 수 있는 횟수. 넘으면 429
 
 server:
   port: 8080
