@@ -34,7 +34,7 @@ class GuestTokenTest {
     @Test
     void 너무_짧거나_길면_실패한다() {
         assertThrows(BusinessException.class, () -> GuestToken.of("abc"));
-        assertThrows(BusinessException.class, () -> GuestToken.of("a".repeat(129)));
+        assertThrows(BusinessException.class, () -> GuestToken.of("a".repeat(65)));
     }
 
     @Test
