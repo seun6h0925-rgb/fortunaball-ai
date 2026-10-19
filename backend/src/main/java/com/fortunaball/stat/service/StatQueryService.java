@@ -3,6 +3,7 @@ package com.fortunaball.stat.service;
 import com.fortunaball.common.exception.BusinessException;
 import com.fortunaball.common.exception.ErrorCode;
 import com.fortunaball.round.service.RoundPolicy;
+import com.fortunaball.stat.domain.SnapshotStatus;
 import com.fortunaball.stat.domain.StatPatternCard;
 import com.fortunaball.stat.domain.StatRoundSnapshot;
 import com.fortunaball.stat.dto.PatternCardResponse;
@@ -62,6 +63,17 @@ public class StatQueryService {
         return new BusinessException(ErrorCode.INVALID_INPUT,
                 "기간은 20, 50, 100 중에서 선택해 주세요.",
                 "period=" + raw + " (허용: " + PatternRule.PERIODS + ")");
+    }
+
+    /**
+     * 대상 회차 통계의 현재 상태. (현재 회차 API-43 의 statStatus 용)
+     * 통계가 아직 없으면 오류로 막지 않고 "사전 분석"으로 돌려준다. 이 값은 화면 안내용이라, 없다고 해서 대상 회차 조회까지 실패하면 안 된다.
+     */
+    @Transactional(readOnly = true)
+    public SnapshotStatus statusOf(int targetRound) {
+        return snapshotRepo.findByTargetRoundNo(targetRound)
+                .map(StatRoundSnapshot::getStatus)
+                .orElse(SnapshotStatus.PREPARING);
     }
 
     @Transactional(readOnly = true)

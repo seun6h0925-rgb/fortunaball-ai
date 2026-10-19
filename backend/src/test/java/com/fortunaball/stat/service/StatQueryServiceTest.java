@@ -72,6 +72,20 @@ class StatQueryServiceTest {
     }
 
     @Test
+    void 대상_회차_통계_상태를_돌려준다() {
+        StatRoundSnapshot snap = StatRoundSnapshot.prepare(1247, 1246, LocalDateTime.of(2026, 10, 19, 10, 0));
+        snap.markWaiting();
+        when(snapshotRepo.findByTargetRoundNo(1247)).thenReturn(Optional.of(snap));
+        assertEquals(SnapshotStatus.WAITING, service.statusOf(1247));
+    }
+
+    @Test
+    void 통계가_없어도_상태_조회는_사전_분석으로_안전하게_돌려준다() {
+        when(snapshotRepo.findByTargetRoundNo(1247)).thenReturn(Optional.empty());
+        assertEquals(SnapshotStatus.PREPARING, service.statusOf(1247));
+    }
+
+    @Test
     void 패턴_코드_순서대로_카드_6장과_상태를_돌려준다() {
         StatRoundSnapshot snap = StatRoundSnapshot.prepare(1247, 1246, LocalDateTime.of(2026, 10, 19, 10, 0));
         when(snapshotRepo.findByTargetRoundNo(1247)).thenReturn(Optional.of(snap));
