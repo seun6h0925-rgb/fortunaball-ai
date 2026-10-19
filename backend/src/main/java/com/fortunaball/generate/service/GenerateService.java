@@ -98,10 +98,7 @@ public class GenerateService {
         LocalDate drawDate = roundPolicy.drawDate(now);
 
         // 3) 통계 스냅샷
-        StatRoundSnapshot snapshot = snapshotRepo.findByTargetRoundNo(targetRound)
-                .orElseThrow(() -> new BusinessException(ErrorCode.SERVICE_UNAVAILABLE,
-                        "통계를 준비하고 있어요. 잠시 후 다시 시도해 주세요.",
-                        "stat_round_snapshot 없음: targetRound=" + targetRound));
+        StatRoundSnapshot snapshot = snapshotOf(targetRound);
         int basisRound = snapshot.getBasisRoundNo();
 
         // 4) 기준 회차까지 최근 100회로 분포 기준을 만든다
@@ -129,6 +126,30 @@ public class GenerateService {
                 targetRound,
                 drawDate,
                 basisRound);
+    }
+
+    /**
+     * 발급 확정(API-04) 중 "이미 3번 찬 조합"을 교체할 새 번호를 만든다.
+     * 처음 생성할 때와 같은 대상 회차·같은 패턴 조건을 그대로 쓰고, 이미 찬 조합 + 호출한 쪽이 넘긴 제외 목록을 뺀다.
+     * (임시 결과의 패턴을 지켜야 하므로 패턴은 완화하지 않는다)
+     *
+     * @param extraExcluded 이번 발급에서 이미 쓴 조합 key 등, 호출한 쪽이 추가로 빼고 싶은 key
+     */
+    @Transactional(readOnly = true)
+    public List<Combo> generateMore(int targetRound, PatternCode code, int count, Set<String> extraExcluded) {
+        StatRoundSnapshot snapshot = snapshotOf(targetRound);
+        DrawProfile profile = DrawProfile.from(loadHistory(snapshot.getBasisRoundNo()));
+        PatternCondition condition = loadCondition(snapshot, code);
+        Set<String> excluded = new HashSet<>(comboCountRepo.findKeysAtLimit(targetRound, props.maxIssuePerCombo()));
+        excluded.addAll(extraExcluded);
+        return runGenerator(condition, count, profile, excluded, code, targetRound);
+    }
+
+    private StatRoundSnapshot snapshotOf(int targetRound) {
+        return snapshotRepo.findByTargetRoundNo(targetRound)
+                .orElseThrow(() -> new BusinessException(ErrorCode.SERVICE_UNAVAILABLE,
+                        "통계를 준비하고 있어요. 잠시 후 다시 시도해 주세요.",
+                        "stat_round_snapshot 없음: targetRound=" + targetRound));
     }
 
     private int validateGameCount(Integer gameCount) {

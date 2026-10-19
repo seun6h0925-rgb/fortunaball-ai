@@ -24,6 +24,7 @@ import java.util.Optional;
  *  - issue()   : 새 임시 결과를 저장하고 확정 토큰을 만든다. 같은 게스트의 이전 임시 결과는 버린다. ("다시 생성하면 이전 번호는 확정 불가")
  *  - find()    : 확정 전에 내용을 읽는다 (게스트가 다르면 못 읽는다)
  *  - consume() : 확정할 때 꺼내면서 지운다 (한 번 쓰면 다시 못 쓴다 → 같은 토큰으로 두 번 확정 방지)
+ *  - restore() : 확정 처리 중 DB 오류로 실패했을 때 꺼냈던 임시 결과를 되살린다 (사용자가 같은 토큰으로 다시 시도할 수 있게)
  *
  * ⚠ 헷갈리기 쉬운 점
  *  - 서버를 다시 켜면 임시 결과는 모두 사라진다. (확정 전 번호이므로 허용하는 정책)
@@ -97,6 +98,20 @@ public class GenerationStore {
             latestByGuest.invalidate(t.guestToken());
         });
         return found;
+    }
+
+    /**
+     * 꺼냈던 임시 결과를 되살린다. (확정 처리 실패 시 사용)
+     * 그 사이 같은 게스트가 새로 생성했다면 새 결과를 우선하고 되살리지 않는다.
+     * ⚠ 보관 시간은 되살린 시점부터 다시 계산된다.
+     */
+    public synchronized void restore(GenerationTicket ticket) {
+        String latest = latestByGuest.getIfPresent(ticket.guestToken());
+        if (latest != null && !latest.equals(ticket.confirmToken())) {
+            return;
+        }
+        tickets.put(ticket.confirmToken(), ticket);
+        latestByGuest.put(ticket.guestToken(), ticket.confirmToken());
     }
 
     private static String newToken() {
