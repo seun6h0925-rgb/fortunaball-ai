@@ -79,7 +79,7 @@ public class PatternCalculator {
     }
 
     /** 창 안에서 많이 나온 상위 번호 집합. 같은 횟수면 작은 번호를 먼저 넣는다. */
-    Set<Integer> hotNumbers(List<DrawNumbers> window) {
+    public Set<Integer> hotNumbers(List<DrawNumbers> window) {
         Map<Integer, Integer> counts = new HashMap<>();
         for (DrawNumbers draw : window) {
             for (int n : draw.numbers()) {
@@ -94,6 +94,27 @@ public class PatternCalculator {
             hot.add(sorted.get(i).getKey());
         }
         return hot;
+    }
+
+    /**
+     * 지금 "겨울잠 번호"인 번호들: history 의 가장 최근 WINTER_GAP_ROUNDS 회 동안 한 번도 안 나온 번호 (1~45 중).
+     * 번호 생성이 쓰는 조건값이다. history 가 그보다 짧으면 판단할 수 없으므로 빈 집합을 돌려준다.
+     */
+    public Set<Integer> sleepNumbers(List<DrawNumbers> history) {
+        Set<Integer> sleep = new HashSet<>();
+        if (history.size() < PatternRule.WINTER_GAP_ROUNDS) {
+            return sleep;
+        }
+        Set<Integer> seen = new HashSet<>();
+        for (int i = history.size() - PatternRule.WINTER_GAP_ROUNDS; i < history.size(); i++) {
+            seen.addAll(history.get(i).numbers());
+        }
+        for (int n = 1; n <= 45; n++) {
+            if (!seen.contains(n)) {
+                sleep.add(n);
+            }
+        }
+        return sleep;
     }
 
     /** index 번째 회차가 겨울잠 번호 패턴에 해당하는지. 바로 앞 20회가 없으면 해당하지 않는다. */

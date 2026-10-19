@@ -59,6 +59,12 @@ public class StatRoundSnapshot {
         return s;
     }
 
+    /** 기준 회차가 바뀌어 통계를 다시 계산했을 때 (상태는 그대로, 기준 회차와 생성 시각만 갱신) */
+    public void rebuild(int basisRoundNo, LocalDateTime now) {
+        this.basisRoundNo = basisRoundNo;
+        this.generatedAt = now;
+    }
+
     /** 결과 대기로 바꾼다 (추첨 시각이 지났고 결과는 아직 없을 때) */
     public void markWaiting() {
         this.status = SnapshotStatus.WAITING;
