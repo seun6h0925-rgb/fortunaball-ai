@@ -4,7 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fortunaball.common.exception.BusinessException;
 import com.fortunaball.common.exception.ErrorCode;
+import com.fortunaball.draw.domain.ApiErrorLog;
 import com.fortunaball.draw.dto.DrawApiResponse;
+import com.fortunaball.draw.service.ApiErrorLogRecorder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,6 +32,10 @@ import java.util.Optional;
  *  - 결과가 비어 있으면(아직 추첨 전인 회차) 오류가 아니라 Optional.empty() 를 돌려준다.
  *  - 통신 실패·점검·형식 변경은 BusinessException(COMMON-008)으로 던진다. 화면에는 짧은 문구만 나가고,
  *    원인(회차, 상태코드, 받은 내용 앞부분)은 detail 로 로그(traceId)에 남는다.
+ *  - 가져오기에 실패하면 로그 파일뿐 아니라 DB(api_error_log)에도 남긴다. (관리자 오류 현황, 오류일지용)
+ *    오류 유형: 통신 실패=NETWORK, 200 이 아닌 응답=HTTP_ERROR, 형식이 달라짐·다른 회차=FORMAT.
+ *    DB 기록이 실패해도 수집 흐름은 그대로 예외를 던진다. (ApiErrorLogRecorder 가 내부에서 오류를 삼킴)
+ *    단, 서버 종료 등으로 요청이 중단된 경우는 오류가 아니라서 DB 에 남기지 않는다.
  *  - 주소와 제한 시간은 application.yml 의 fortuna.draw.* 로 바꿀 수 있고, 없으면 아래 기본값을 쓴다.
  */
 @Component
@@ -37,16 +43,22 @@ public class DrawCollector {
 
     private static final Logger log = LoggerFactory.getLogger(DrawCollector.class);
 
+    /** api_error_log 의 api_name 에 들어가는 이름 */
+    static final String API_NAME = "DHLOTTERY_DRAW";
+
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
     private final String apiUrl;
     private final Duration requestTimeout;
+    private final ApiErrorLogRecorder errorLogRecorder;
 
     public DrawCollector(
             ObjectMapper objectMapper,
+            ApiErrorLogRecorder errorLogRecorder,
             @Value("${fortuna.draw.api-url:https://www.dhlottery.co.kr/lt645/selectPstLt645Info.do}") String apiUrl,
             @Value("${fortuna.draw.timeout-ms:10000}") int timeoutMs) {
         this.objectMapper = objectMapper;
+        this.errorLogRecorder = errorLogRecorder;
         this.apiUrl = apiUrl;
         this.requestTimeout = Duration.ofMillis(timeoutMs);
         this.httpClient = HttpClient.newBuilder()
@@ -74,13 +86,14 @@ public class DrawCollector {
             response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();   // 중단 요청은 지우지 않고 다시 표시해 둔다
-            throw fail(roundNo, "요청이 중단됨", e);
+            throw fail(roundNo, null, uri, null, "요청이 중단됨", e);
         } catch (IOException e) {
-            throw fail(roundNo, "통신 실패(연결·시간 초과)", e);
+            throw fail(roundNo, ApiErrorLog.TYPE_NETWORK, uri, null, "통신 실패(연결·시간 초과)", e);
         }
 
         if (response.statusCode() != 200) {
-            throw fail(roundNo, "응답 상태 " + response.statusCode() + " / 받은 내용: " + head(response.body()), null);
+            throw fail(roundNo, ApiErrorLog.TYPE_HTTP_ERROR, uri, response.statusCode(),
+                    "응답 상태 " + response.statusCode() + " / 받은 내용: " + head(response.body()), null);
         }
 
         DrawApiResponse parsed;
@@ -88,7 +101,8 @@ public class DrawCollector {
             parsed = objectMapper.readValue(response.body(), DrawApiResponse.class);
         } catch (JsonProcessingException e) {
             // JSON 이 아닌 글자가 온 경우 (점검 안내 화면, 사이트 개편 등)
-            throw fail(roundNo, "응답 형식이 달라짐 / 받은 내용: " + head(response.body()), e);
+            throw fail(roundNo, ApiErrorLog.TYPE_FORMAT, uri, response.statusCode(),
+                    "응답 형식이 달라짐 / 받은 내용: " + head(response.body()), e);
         }
 
         if (parsed == null || !parsed.hasData()) {
@@ -98,14 +112,23 @@ public class DrawCollector {
         DrawApiResponse.Item item = parsed.first();
         if (item.ltEpsd() != roundNo) {
             // 다른 회차가 왔다면 그대로 저장하면 잘못된 데이터가 되므로 막는다
-            throw fail(roundNo, "요청한 회차와 다른 회차가 옴: " + item.ltEpsd(), null);
+            throw fail(roundNo, ApiErrorLog.TYPE_FORMAT, uri, response.statusCode(),
+                    "요청한 회차와 다른 회차가 옴: " + item.ltEpsd(), null);
         }
         return Optional.of(item);
     }
 
-    private BusinessException fail(int roundNo, String reason, Exception cause) {
+    /**
+     * 실패를 DB 에 남기고(errorType 이 null 이면 남기지 않음) 던질 예외를 만든다.
+     * @param httpStatus 응답이 오지 않은 통신 실패면 null
+     */
+    private BusinessException fail(int roundNo, String errorType, URI uri, Integer httpStatus,
+                                   String reason, Exception cause) {
         String detail = "회차 수집 실패 round=" + roundNo + " / " + reason
                 + (cause == null ? "" : " / " + cause.getClass().getSimpleName() + ": " + cause.getMessage());
+        if (errorType != null) {
+            errorLogRecorder.record(API_NAME, errorType, uri.toString(), httpStatus, detail);
+        }
         return new BusinessException(ErrorCode.SERVICE_UNAVAILABLE, "공식 회차 데이터를 가져오지 못했어요.", detail);
     }
 
