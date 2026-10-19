@@ -25,6 +25,15 @@ spring:
           time_zone: Asia/Seoul
   jackson:
     time-zone: Asia/Seoul
+  cache:
+    type: simple                     # @Cacheable 계열(회차·통계)은 지금처럼 단순 메모리 방식 유지. Caffeine 을 추가해도 자동으로 바뀌지 않게 고정한다.
+
+# 번호 생성 설정 (generate 패키지의 GenerationProperties 가 읽는다)
+fortuna:
+  generate:
+    ttl-minutes: 30                  # 임시 결과를 보관하는 시간 (분). 이 시간이 지나면 확정할 수 없다.
+    max-games: 50                    # 한 번에 만들 수 있는 최대 게임 수 (1~이 값)
+    max-issue-per-combo: 3           # 같은 회차에서 같은 조합을 확정 발급할 수 있는 최대 횟수 (이 횟수가 찬 조합은 번호 생성에서 제외)
 
 server:
   port: 8080
