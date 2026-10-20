@@ -10,14 +10,21 @@ import com.fortunaball.ai.usage.AiFeature;
  *  mapContext   지도 화면의 AI 질문인지
  *  hasLocation  위치(위도·경도)가 요청에 함께 왔는지 (값 자체는 받지 않는다)
  *  hasSymbols   꿈풀이에서 꿈 상징을 찾았는지 (꿈풀이가 아니면 false)
+ *  hasLottoInput 애널리스트에서 번호 생성 요청·발급코드·회차·직접 적은 번호처럼 로또와 직접 관련된 입력이 있는지
  */
-public record PolicyContext(AiFeature feature, String text, boolean mapContext, boolean hasLocation, boolean hasSymbols) {
+public record PolicyContext(AiFeature feature, String text, boolean mapContext, boolean hasLocation, boolean hasSymbols,
+                            boolean hasLottoInput) {
 
     public static PolicyContext dream(String text, boolean hasSymbols) {
-        return new PolicyContext(AiFeature.DREAM, text, false, false, hasSymbols);
+        return new PolicyContext(AiFeature.DREAM, text, false, false, hasSymbols, false);
     }
 
+    /** 로또 관련 입력 여부를 따로 알리지 않는 경우(false 로 본다). 주제 이탈(OFF_TOPIC_ANALYST) 판별이 필요하면 아래 4개 값 버전을 쓴다. */
     public static PolicyContext analyst(String text, boolean mapContext, boolean hasLocation) {
-        return new PolicyContext(AiFeature.ANALYST, text, mapContext, hasLocation, false);
+        return analyst(text, mapContext, hasLocation, false);
+    }
+
+    public static PolicyContext analyst(String text, boolean mapContext, boolean hasLocation, boolean hasLottoInput) {
+        return new PolicyContext(AiFeature.ANALYST, text, mapContext, hasLocation, false, hasLottoInput);
     }
 }

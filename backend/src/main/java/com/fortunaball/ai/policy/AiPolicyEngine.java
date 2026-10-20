@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
  * 정책 코드별 규칙 (시드: docs/db/seed_ai_policy.sql)
  *  OFF_TOPIC_MAP        지도 질문에서 "허용 키워드"가 하나도 없으면 걸린다.
  *  DREAM_OFF_TOPIC      꿈풀이에서 상징도 없고 "꿈 표현 키워드"도 없으면 걸린다.
+ *  OFF_TOPIC_ANALYST    일반(지도가 아닌) 애널리스트 질문에서 로또 입력(번호 생성·회차·발급코드 등)도 없고 "허용 키워드"도 없으면 걸린다.
  *  LOCATION_REQUIRED    지도 질문인데 위치가 없고, 키워드(내 위치·근처 등)가 있으면 걸린다.
  *  DREAM_LOW_RELEVANCE  이 엔진이 판단하지 않는다. (꿈풀이가 상징 유무로 직접 처리)
  *  그 밖의 코드          키워드가 하나라도 들어 있으면 걸린다. (DESPERATE_REQUEST, GUARANTEE_REQUEST, PURCHASE_PUSH,
@@ -27,6 +28,7 @@ import org.springframework.stereotype.Component;
 public class AiPolicyEngine {
 
     static final String OFF_TOPIC_MAP = "OFF_TOPIC_MAP";
+    static final String OFF_TOPIC_ANALYST = "OFF_TOPIC_ANALYST";
     static final String DREAM_OFF_TOPIC = "DREAM_OFF_TOPIC";
     static final String LOCATION_REQUIRED = "LOCATION_REQUIRED";
     static final String DREAM_LOW_RELEVANCE = "DREAM_LOW_RELEVANCE";
@@ -51,6 +53,14 @@ public class AiPolicyEngine {
         return Optional.empty();
     }
 
+    /** 정책 코드로 활성 정책 하나를 찾는다. (AI 가 직접 판단한 주제 이탈처럼, 키워드 없이 고정 문구만 필요할 때 쓴다) */
+    public Optional<PolicyHit> policyOf(String code) {
+        return source.activePolicies().stream()
+                .filter(p -> p.code().equals(code))
+                .findFirst()
+                .map(p -> new PolicyHit(p.code(), p.type(), p.message()));
+    }
+
     private static boolean appliesTo(AiPolicy p, AiFeature feature) {
         return "ALL".equals(p.scope()) || feature.name().equals(p.scope());
     }
@@ -61,7 +71,8 @@ public class AiPolicyEngine {
         }
         boolean contains = containsAny(text, p.keywords());
         return switch (p.code()) {
-            case OFF_TOPIC_MAP -> ctx.mapContext() && !contains;
+            case OFF_TOPIC_MAP -> ctx.mapContext() && !ctx.hasLottoInput() && !contains;
+            case OFF_TOPIC_ANALYST -> ctx.feature() == AiFeature.ANALYST && !ctx.mapContext() && !ctx.hasLottoInput() && !contains;
             case DREAM_OFF_TOPIC -> ctx.feature() == AiFeature.DREAM && !ctx.hasSymbols() && !contains;
             case LOCATION_REQUIRED -> ctx.mapContext() && !ctx.hasLocation() && contains;
             default -> contains;

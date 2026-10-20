@@ -67,6 +67,14 @@ public final class AiSession {
         }
     }
 
+    /**
+     * 차감했던 무료 횟수를 돌려준다. AI 호출이 실패한 것이 아니어도 사용자 잘못이 아닌 경우에 쓴다.
+     * (예: AI 가 로또와 무관한 질문이라고 판단해 고정 문구로 응답한 경우) 한 번 돌려준 뒤에는 다시 돌려주지 않는다.
+     */
+    public void refund() {
+        guard.refund(permit);
+    }
+
     private static long elapsedMillis(long startNano) {
         return (System.nanoTime() - startNano) / 1_000_000;
     }

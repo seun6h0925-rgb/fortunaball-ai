@@ -91,7 +91,27 @@ public class GenerateService {
         // 1) 입력 검사
         int gameCount = validateGameCount(request == null ? null : request.gameCount());
         PatternCode code = parsePatternCode(request == null ? null : request.patternCode());
+        return generateInternal(guest, gameCount, code, Set.of(), Set.of());
+    }
 
+    /**
+     * AI 애널리스트용: 질문에서 읽은 게임 수와 포함·제외 번호로 번호를 만든다. (패턴은 쓰지 않는다)
+     * 대상 회차·통계 기준·"이미 3번 찬 조합 제외"·임시 보관(확정 토큰)은 번호 생성 화면과 똑같다.
+     * 포함·제외 번호는 어떤 경우에도 완화하지 않는다. (통계 필터와 쏠림 감점만 완화된다)
+     *
+     * @param gameCount 비어 있으면 1게임
+     */
+    @Transactional(readOnly = true)
+    public GenerateResponse generateWithNumbers(GuestToken guest, Integer gameCount, Set<Integer> include, Set<Integer> exclude) {
+        int count = validateGameCount(gameCount == null ? Integer.valueOf(1) : gameCount);
+        Set<Integer> in = include == null ? Set.of() : include;
+        Set<Integer> out = exclude == null ? Set.of() : exclude;
+        validateNumberChoices(in, out, count);
+        return generateInternal(guest, count, null, in, out);
+    }
+
+    private GenerateResponse generateInternal(GuestToken guest, int gameCount, PatternCode code,
+                                              Set<Integer> include, Set<Integer> exclude) {
         // 2) 대상 회차는 서버가 계산한다
         ZonedDateTime now = ZonedDateTime.now(RoundPolicy.ZONE);
         int targetRound = roundPolicy.targetRound(now);
@@ -104,8 +124,9 @@ public class GenerateService {
         // 4) 기준 회차까지 최근 100회로 분포 기준을 만든다
         DrawProfile profile = DrawProfile.from(loadHistory(basisRound));
 
-        // 3-2) 패턴 조건값
-        PatternCondition condition = loadCondition(snapshot, code);
+        // 3-2) 패턴 조건값 (패턴이 없으면 포함·제외 번호 조건만 담는다)
+        PatternCondition condition = code == null
+                ? PatternCondition.withNumbers(include, exclude) : loadCondition(snapshot, code);
 
         // 5) 이미 N번 찬 조합은 제외
         Set<String> excluded = new HashSet<>(comboCountRepo.findKeysAtLimit(targetRound, props.maxIssuePerCombo()));
@@ -150,6 +171,56 @@ public class GenerateService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.SERVICE_UNAVAILABLE,
                         "통계를 준비하고 있어요. 잠시 후 다시 시도해 주세요.",
                         "stat_round_snapshot 없음: targetRound=" + targetRound));
+    }
+
+    /**
+     * 포함·제외 번호가 서로 맞는지 미리 검사해서, 만들 수 없는 요청을 바로 쉬운 말로 돌려보낸다.
+     * (가능한 조합 수 = 포함하고 남은 자리 수만큼을 제외하지 않은 나머지 번호에서 고르는 경우의 수)
+     */
+    private void validateNumberChoices(Set<Integer> include, Set<Integer> exclude, int gameCount) {
+        for (int n : include) {
+            if (n < 1 || n > 45) {
+                throw invalidNumbers("번호는 1부터 45까지만 쓸 수 있어요.", "포함 번호 범위 오류: " + n);
+            }
+        }
+        for (int n : exclude) {
+            if (n < 1 || n > 45) {
+                throw invalidNumbers("번호는 1부터 45까지만 쓸 수 있어요.", "제외 번호 범위 오류: " + n);
+            }
+        }
+        for (int n : include) {
+            if (exclude.contains(n)) {
+                throw invalidNumbers(n + "번을 포함과 제외에 모두 적으셨어요. 하나만 선택해 주세요.",
+                        "포함·제외 번호 충돌: " + n);
+            }
+        }
+        if (include.size() > 6) {
+            throw invalidNumbers("포함할 번호는 6개까지만 적을 수 있어요.", "포함 번호 개수 초과: " + include.size());
+        }
+        int remaining = 45 - exclude.size() - include.size();
+        int slots = 6 - include.size();
+        if (remaining < slots) {
+            throw invalidNumbers("제외할 번호가 너무 많아요. 제외하고 남는 번호로 6개를 채울 수 있어야 해요.",
+                    "제외 번호 과다: exclude=" + exclude.size() + " include=" + include.size());
+        }
+        long possible = combinations(remaining, slots);
+        if (gameCount > possible) {
+            throw invalidNumbers("이 조건으로 만들 수 있는 조합은 " + possible + "개뿐이에요. 게임 수를 줄여 주세요.",
+                    "가능한 조합 수 초과: possible=" + possible + " gameCount=" + gameCount);
+        }
+    }
+
+    private static BusinessException invalidNumbers(String userMessage, String detail) {
+        return new BusinessException(ErrorCode.INVALID_INPUT, userMessage, detail);
+    }
+
+    /** nCr (n 이 45 이하라 long 으로 충분하다) */
+    private static long combinations(int n, int r) {
+        long result = 1;
+        for (int i = 1; i <= r; i++) {
+            result = result * (n - r + i) / i;
+        }
+        return result;
     }
 
     private int validateGameCount(Integer gameCount) {
@@ -225,8 +296,10 @@ public class GenerateService {
                     "지금은 이 패턴으로 번호를 만들 수 없어요. 다른 패턴을 선택해 주세요.",
                     "패턴 조건 불충족: code=" + code + " targetRound=" + targetRound + " cause=" + e.getMessage());
         } catch (IllegalStateException e) {
+            boolean hasNumberChoices = !condition.includeNumbers().isEmpty() || !condition.excludeNumbers().isEmpty();
             throw new BusinessException(ErrorCode.SERVICE_UNAVAILABLE,
-                    "번호를 만들지 못했어요. 게임 수를 줄이거나 잠시 후 다시 시도해 주세요.",
+                    hasNumberChoices ? "조건에 맞는 번호를 만들지 못했어요. 포함·제외 번호나 게임 수를 줄여 주세요."
+                            : "번호를 만들지 못했어요. 게임 수를 줄이거나 잠시 후 다시 시도해 주세요.",
                     "후보 부족: code=" + code + " targetRound=" + targetRound + " gameCount=" + gameCount + " cause=" + e.getMessage());
         }
     }

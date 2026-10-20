@@ -1,6 +1,7 @@
 package com.fortunaball.draw.repository;
 
 import com.fortunaball.draw.domain.DrawPrize;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
@@ -20,6 +21,12 @@ public interface DrawPrizeRepository extends JpaRepository<DrawPrize, Long> {
     /** 한 회차의 1~5등 당첨금을 등수 순서로 (API-01, 02) */
     List<DrawPrize> findByRoundNoOrderByWinningRankAsc(int roundNo);
 
-    /** 회차 범위(양 끝 포함)의 당첨금을 회차 → 등수 순서로. (당첨금 추이 API-11) */
+    /** 회차 범위의 당첨금을 회차·등수 순서로 (당첨금 추이 통계용: PrizeTrendService) */
     List<DrawPrize> findByRoundNoBetweenOrderByRoundNoAscWinningRankAsc(int fromRound, int toRound);
+
+    /**
+     * 한 등수의 전체 회차 기록을 정렬해서 일부만 (AI 애널리스트의 "역대 1등 당첨금이 가장 컸던 회차" 같은 질문용).
+     * 정렬 기준(prizeAmount, winnerCount 등)과 개수는 Pageable 로 넘긴다.
+     */
+    List<DrawPrize> findByWinningRank(int winningRank, Pageable pageable);
 }

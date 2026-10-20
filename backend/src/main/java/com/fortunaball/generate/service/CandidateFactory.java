@@ -22,6 +22,7 @@ import java.util.random.RandomGenerator;
  *  - 핫넘버·겨울잠·센터 존은 "조건에 필요한 번호를 먼저 넣고 나머지를 채우는" 방식이고,
  *    밸런스·하이로우·구간 스프레드는 "무작위로 만들어 보고 조건에 맞을 때까지 다시 뽑는" 방식이다.
  *    (후자는 통과 확률이 60% 이상이라 금방 끝난다)
+ *  - 포함·제외 번호(AI 애널리스트 요청)는 패턴 없이 만들 때만 지킨다. 포함 번호를 먼저 넣고, 제외 번호를 뺀 나머지에서 채운다.
  *  - 조건을 만족하는 조합 자체를 만들 수 없으면(예: 겨울잠 번호가 하나도 없음) PatternUnavailableException 을 던진다.
  *    패턴 조건은 완화하지 않는다.
  */
@@ -33,7 +34,7 @@ public final class CandidateFactory {
     public static Combo next(PatternCondition cond, RandomGenerator rng) {
         PatternCode code = cond.code();
         if (code == null) {
-            return Combo.of(fill(new HashSet<>(), rng));
+            return Combo.of(fill(new HashSet<>(cond.includeNumbers()), cond.excludeNumbers(), rng));
         }
         switch (code) {
             case HOT_NUMBER:
@@ -118,8 +119,20 @@ public final class CandidateFactory {
 
     /** 이미 고른 번호 외에 1~45 에서 무작위로 6개가 될 때까지 채운다 */
     private static List<Integer> fill(Set<Integer> chosen, RandomGenerator rng) {
+        return fill(chosen, Set.of(), rng);
+    }
+
+    /** 위와 같지만 excluded 에 든 번호는 채우지 않는다. (남는 번호가 모자라면 끝나지 않으므로 먼저 막는다) */
+    private static List<Integer> fill(Set<Integer> chosen, Set<Integer> excluded, RandomGenerator rng) {
+        long available = java.util.stream.IntStream.rangeClosed(1, 45).filter(n -> !excluded.contains(n) || chosen.contains(n)).count();
+        if (available < 6 || chosen.size() > 6) {
+            throw new IllegalArgumentException("포함·제외 번호로는 6개 조합을 만들 수 없습니다: 포함=" + chosen + " 제외=" + excluded);
+        }
         while (chosen.size() < 6) {
-            chosen.add(1 + rng.nextInt(45));
+            int n = 1 + rng.nextInt(45);
+            if (!excluded.contains(n)) {
+                chosen.add(n);
+            }
         }
         return new ArrayList<>(chosen);
     }

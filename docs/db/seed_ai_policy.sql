@@ -6,6 +6,7 @@
 --  * 우선순위(priority) 오름차순으로 검사해 처음 걸린 정책의 response_message 를 고정 응답한다. AI 호출·횟수 차감 없음.
 --  * LOCATION_REQUIRED 는 위치(위도·경도)가 요청에 없을 때만 적용한다.
 --  * OFF_TOPIC_MAP 은 예외적으로 "허용 키워드" 목록이다. 위치가 함께 온 지도 문맥에서 키워드가 하나도 없으면 차단한다.
+--  * OFF_TOPIC_ANALYST 도 "허용 키워드" 목록이다. 지도가 아닌 애널리스트 질문에서 번호 생성·회차·발급코드 같은 로또 입력도 없고 키워드도 없으면 차단한다.
 --  * DREAM_OFF_TOPIC 도 "허용 키워드" 목록이다. 상징이 없고 꿈 표현(꿈·꿨 등)도 없으면 꿈이 아닌 입력으로 보고 차단한다.
 --  * DREAM_LOW_RELEVANCE 는 관리자 화면 표시용이다. 꿈풀이 코드는 아직 상수 문구를 쓴다.
 
@@ -21,6 +22,8 @@ INSERT INTO ai_input_policy (policy_code, policy_name, feature_scope, policy_typ
  '내 위치 기준 질문은 위치 사용을 켜야 답할 수 있어요. 지도 위의 위치 스위치를 켜고 동의해 주세요. 위치는 저장되지 않아요.', 1),
 ('OFF_TOPIC_MAP', '지도 AI 주제 이탈', 'ANALYST', 'OFF_TOPIC', 'FIXED_RESPONSE', 50,
  '지도 AI는 로또 판매점, 명당, 당첨 이력에 대한 질문만 도와드릴 수 있어요. 다른 질문은 답변하기 어려워요.', 1),
+('OFF_TOPIC_ANALYST', '애널리스트 주제 이탈', 'ANALYST', 'OFF_TOPIC', 'FIXED_RESPONSE', 55,
+ '번호 생성과 무관한 주제의 이야기는 죄송하지만 처리할 수 없어요.', 1),
 ('DREAM_LOW_RELEVANCE', '꿈풀이 관련성 부족', 'DREAM', 'DREAM_LOW_RELEVANCE', 'FIXED_RESPONSE', 60,
  '입력하신 꿈은 로또 꿈풀이와 직접 연결할 상징이 많지 않습니다.\n그래도 일부 키워드와 통계 데이터를 바탕으로 재미로 참고할 수 있는 번호 조합을 만들어드릴 수 있습니다.', 1),
 ('DREAM_OFF_TOPIC', '꿈풀이 주제 이탈', 'DREAM', 'OFF_TOPIC', 'FIXED_RESPONSE', 70,
@@ -33,7 +36,7 @@ ON DUPLICATE KEY UPDATE
 -- ========== 키워드 (공백 없이 저장) ==========
 DELETE k FROM ai_policy_keyword k
   JOIN ai_input_policy p ON p.id = k.ai_input_policy_id
- WHERE p.policy_code IN ('DESPERATE_REQUEST','GUARANTEE_REQUEST','PURCHASE_PUSH','LOCATION_REQUIRED','OFF_TOPIC_MAP','DREAM_OFF_TOPIC');
+ WHERE p.policy_code IN ('DESPERATE_REQUEST','GUARANTEE_REQUEST','PURCHASE_PUSH','LOCATION_REQUIRED','OFF_TOPIC_MAP','OFF_TOPIC_ANALYST','DREAM_OFF_TOPIC');
 
 INSERT INTO ai_policy_keyword (ai_input_policy_id, keyword, match_type, is_active)
 SELECT p.id, w.keyword, 'CONTAINS', 1
@@ -79,6 +82,26 @@ SELECT p.id, w.keyword, 'CONTAINS', 1
     SELECT 'OFF_TOPIC_MAP', '루키' UNION ALL
     SELECT 'OFF_TOPIC_MAP', '자동' UNION ALL
     SELECT 'OFF_TOPIC_MAP', '수동' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '로또' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '번호' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '당첨' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '통계' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '회차' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '추첨' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '발급' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '조합' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '핫넘버' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '미출현' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '홀짝' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '합계' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '연속' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '구간' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '보너스' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '1등' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '2등' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '판매점' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '명당' UNION ALL
+    SELECT 'OFF_TOPIC_ANALYST', '분석' UNION ALL
     SELECT 'DREAM_OFF_TOPIC', '꿈' UNION ALL
     SELECT 'DREAM_OFF_TOPIC', '꿨' UNION ALL
     SELECT 'DREAM_OFF_TOPIC', '꾼' UNION ALL
