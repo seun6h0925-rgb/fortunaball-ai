@@ -43,6 +43,24 @@ fortuna:
   upload:
     dir: ${UPLOAD_DIR:}              # 사진 저장 폴더. .env 의 UPLOAD_DIR. 프로젝트(Git) 밖 절대 경로. .env 에서는 \ 대신 / 로 적는다.
     max-size-mb: 10                  # 사진 1장 최대 용량(MB)
+  # AI 설정 (ai.client.AiProperties 가 읽는다). 비용 단위는 모두 USD.
+  # 한도 숫자는 시연용이다. 실서비스에서는 월 예산에서 거꾸로 계산해서 올린다. (값만 바꾸면 되고 코드는 안 바꾼다)
+  ai:
+    api-key: ${AI_API_KEY:}          # 비밀값. .env 의 AI_API_KEY 에만 적는다. 비어 있으면 AI 기능만 이용 불가(503), 나머지는 정상.
+    base-url: https://api.openai.com/v1
+    classifier-model: gpt-6-luna     # 애매한 질문을 나누는 저비용 호출용 모델
+    answer-model: gpt-6-luna         # 사용자에게 보여 줄 설명을 만드는 모델. 품질이 부족하면 이 줄만 바꾼다.
+    timeout-seconds: 20              # 응답을 기다리는 최대 시간. 넘으면 실패로 처리하고 사용자에게 재시도를 안내한다.
+    daily-call-limit: 300            # 서비스 전체 하루 AI 호출 상한(서울 날짜 기준). 넘으면 AI 만 중지(503)
+    monthly-cost-limit-usd: 10       # 서비스 전체 월 비용 상한(USD, 매월 1일부터). 넘으면 AI 만 중지(503)
+    user-daily-limit: 5              # 비회원 1명(guest_token)의 하루 무료 AI 횟수. 넘으면 429
+    ip-daily-limit: 20               # 접속지(IP) 1곳의 하루 AI 횟수. guest_token 을 바꿔 우회하는 것을 막는 안전망
+    per-minute-limit: 50             # 1분에 보낼 수 있는 AI 요청 횟수(사용자별·접속지별 각각, 자동 호출 방지용). 일반 사용은 못 느끼는 값. 넘으면 429
+    # 모델별 가격(100만 토큰당 USD). 모델을 바꾸면 같이 바꾼다. 비용 추정과 월 한도 계산에 쓴다.
+    classifier-input-per-million-usd: 0.10
+    classifier-output-per-million-usd: 0.50
+    answer-input-per-million-usd: 0.10
+    answer-output-per-million-usd: 0.50
   # 조회 횟수 제한 (common.security.RateLimitProperties 가 읽는다)
   rate-limit:
     issue-lookup-per-minute: 30      # 발급코드 상세 조회(API-05)를 한 접속지(IP)에서 1분에 부를 수 있는 횟수. 넘으면 429
