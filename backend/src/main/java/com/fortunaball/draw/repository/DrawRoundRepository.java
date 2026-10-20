@@ -36,4 +36,7 @@ public interface DrawRoundRepository extends JpaRepository<DrawRound, Long> {
      * 예) findByRoundNoLessThanEqualOrderByRoundNoDesc(1246, PageRequest.of(0, 120)) → 1246회부터 거꾸로 120회
      */
     List<DrawRound> findByRoundNoLessThanEqualOrderByRoundNoDesc(int roundNo, Pageable pageable);
+
+    /** 회차 범위(양 끝 포함)를 오래된 순으로. (당첨금 추이 API-11 에서 날짜를 붙일 때 사용) */
+    List<DrawRound> findByRoundNoBetweenOrderByRoundNoAsc(int fromRound, int toRound);
 }
