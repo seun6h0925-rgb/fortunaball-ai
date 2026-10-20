@@ -11,6 +11,7 @@ import com.fortunaball.record.dto.AdminVerificationListResponse;
 import com.fortunaball.record.dto.VerificationReviewRequest;
 import com.fortunaball.record.dto.VerificationReviewResponse;
 import com.fortunaball.record.repository.AnonymousVerificationRepository;
+import com.fortunaball.verify.repository.WinningVerificationRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
@@ -36,6 +37,9 @@ import java.util.Set;
  *   REJECTED → (끝) 사용자가 같은 발급코드로 다시 등록하면 새 인증 건이 생긴다.
  * 반려·숨김은 사유(관리자 코멘트)가 필수다. 승인되면 공개(is_public=1), 그 외는 비공개로 바뀐다.
  *
+ * 공개 연동: 승인되면 그 발급 건의 당첨 조합(1~5등)이 당첨 기록(winning_verification.is_public)에도 공개되고,
+ *   숨김·반려되면 함께 비공개가 된다. 건별 수동 조절은 API-27(AdminWinningRecordService).
+ *
  * ⚠ 아직 하지 않은 것: 관리자 로그인이 없어서 "누가 처리했는지"(admin_action_log)는 남기지 않는다.
  *    관리자 로그인(세션)을 만들 때 이 서비스의 review() 에 작업 기록을 붙인다.
  * ⚠ 사진을 지우지 않는다. (반려 후에도 관리자가 사유를 확인할 수 있게 둔다. 보관 기간 정책은 따로 정한다)
@@ -57,10 +61,13 @@ public class AdminVerificationService {
 
     private final AnonymousVerificationRepository proofRepo;
     private final NumberIssueRepository issueRepo;
+    private final WinningVerificationRepository winningRepo;
 
-    public AdminVerificationService(AnonymousVerificationRepository proofRepo, NumberIssueRepository issueRepo) {
+    public AdminVerificationService(AnonymousVerificationRepository proofRepo, NumberIssueRepository issueRepo,
+                                    WinningVerificationRepository winningRepo) {
         this.proofRepo = proofRepo;
         this.issueRepo = issueRepo;
+        this.winningRepo = winningRepo;
     }
 
     /** @param status null 이면 전체. 최신순(id 큰 것부터) */
@@ -125,7 +132,10 @@ public class AdminVerificationService {
 
         v.review(to, reason, LocalDateTime.now());
         proofRepo.saveAndFlush(v);
-        log.info("인증 검수: verificationId={}, {} → {}", id, from, to);
+        // 승인이면 이 발급 건의 당첨 조합을 당첨 기록에 공개하고, 숨김·반려면 내린다. (같은 트랜잭션이라 함께 반영/취소된다)
+        // ⚠ 이 줄 이후에는 영속성 컨텍스트가 비워지므로(clearAutomatically) v 를 다시 저장하지 않는다.
+        int changed = winningRepo.updatePublicByIssue(v.getNumberIssueId(), v.isPublicVisible());
+        log.info("인증 검수: verificationId={}, {} → {}, 당첨 기록 공개 변경 {}건", id, from, to, changed);
         return new VerificationReviewResponse(v.getId(), v.getReviewStatus().name(), v.isPublicVisible(), v.getReviewedAt());
     }
 }

@@ -36,4 +36,8 @@ public interface AnonymousVerificationRepository extends JpaRepository<Anonymous
             group by n.numberIssueId
             """)
     List<Object[]> findBestRanksByIssueIds(@Param("issueIds") Collection<Long> issueIds);
+
+    /** 공개 중인(승인 + 공개) 인증만. 당첨 기록 목록(API-17)에서 사용자 한마디를 붙일 때 쓴다. */
+    List<AnonymousVerification> findByNumberIssueIdInAndReviewStatusAndPublicVisibleTrue(
+            Collection<Long> numberIssueIds, ReviewStatus status);
 }

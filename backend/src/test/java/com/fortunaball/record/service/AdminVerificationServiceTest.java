@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -22,6 +23,7 @@ import com.fortunaball.record.dto.AdminVerificationListResponse;
 import com.fortunaball.record.dto.VerificationReviewRequest;
 import com.fortunaball.record.dto.VerificationReviewResponse;
 import com.fortunaball.record.repository.AnonymousVerificationRepository;
+import com.fortunaball.verify.repository.WinningVerificationRepository;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,11 +40,12 @@ class AdminVerificationServiceTest {
 
     private final AnonymousVerificationRepository proofRepo = mock(AnonymousVerificationRepository.class);
     private final NumberIssueRepository issueRepo = mock(NumberIssueRepository.class);
+    private final WinningVerificationRepository winningRepo = mock(WinningVerificationRepository.class);
     private AdminVerificationService service;
 
     @BeforeEach
     void setUp() {
-        service = new AdminVerificationService(proofRepo, issueRepo);
+        service = new AdminVerificationService(proofRepo, issueRepo, winningRepo);
     }
 
     private static BusinessException reject(Runnable r) {
@@ -79,6 +82,7 @@ class AdminVerificationServiceTest {
         assertTrue(res.publicVisible());
         assertTrue(v.isPublicVisible());
         verify(proofRepo).saveAndFlush(v);
+        verify(winningRepo).updatePublicByIssue(10L, true);   // 당첨 기록도 함께 공개
     }
 
     @Test
@@ -91,6 +95,7 @@ class AdminVerificationServiceTest {
         assertEquals("REJECTED", res.reviewStatus());
         assertFalse(res.publicVisible());
         assertEquals("사진이 흐려요", v.getAdminComment());
+        verify(winningRepo).updatePublicByIssue(10L, false);   // 당첨 기록도 비공개
     }
 
     @Test
@@ -100,6 +105,8 @@ class AdminVerificationServiceTest {
 
         assertFalse(service.review(1L, req(ReviewStatus.HIDDEN, "개인정보 노출")).publicVisible());
         assertTrue(service.review(1L, req(ReviewStatus.APPROVED, null)).publicVisible());
+        verify(winningRepo).updatePublicByIssue(10L, false);
+        verify(winningRepo, times(1)).updatePublicByIssue(10L, true);
     }
 
     @Test
@@ -111,6 +118,7 @@ class AdminVerificationServiceTest {
         assertEquals(ErrorCode.INVALID_INPUT, reject(() -> service.review(1L, req(ReviewStatus.REJECTED, "   "))).getErrorCode());
         assertEquals(ErrorCode.INVALID_INPUT, reject(() -> service.review(1L, req(ReviewStatus.HIDDEN, ""))).getErrorCode());
         verify(proofRepo, never()).saveAndFlush(any());
+        verify(winningRepo, never()).updatePublicByIssue(any(), org.mockito.ArgumentMatchers.anyBoolean());
     }
 
     @Test
