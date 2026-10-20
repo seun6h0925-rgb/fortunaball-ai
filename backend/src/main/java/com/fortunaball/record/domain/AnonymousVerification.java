@@ -93,9 +93,8 @@ public class AnonymousVerification {
         this.reviewStatus = status;
         this.adminComment = adminComment;
         this.reviewedAt = now;
-        if (status != ReviewStatus.APPROVED) {
-            this.publicVisible = false;   // 승인이 아니면 공개하지 않는다.
-        }
+        // 승인이면 공개, 그 외(반려·숨김)는 비공개. (숨김 = 한 번 공개했던 것을 내리는 것)
+        this.publicVisible = (status == ReviewStatus.APPROVED);
     }
 
     public Long getId() { return id; }

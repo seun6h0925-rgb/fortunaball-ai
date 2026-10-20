@@ -2,18 +2,27 @@ package com.fortunaball.record.repository;
 
 import com.fortunaball.common.file.FileUpload;
 import com.fortunaball.common.file.FileUploadRepository;
+import com.fortunaball.draw.domain.DrawRound;
+import com.fortunaball.draw.repository.DrawRoundRepository;
+import com.fortunaball.issue.domain.IssueNumber;
 import com.fortunaball.issue.domain.IssueType;
 import com.fortunaball.issue.domain.NumberIssue;
+import com.fortunaball.issue.repository.IssueNumberRepository;
 import com.fortunaball.issue.repository.NumberIssueRepository;
 import com.fortunaball.record.domain.AnonymousVerification;
 import com.fortunaball.record.domain.ReviewStatus;
+import com.fortunaball.verify.repository.WinningVerificationRepository;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.jdbc.AutoConfigureTestDatabase;
 import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -42,6 +51,12 @@ class AnonymousVerificationRepositoryTest {
     private NumberIssueRepository issueRepo;
     @Autowired
     private FileUploadRepository fileRepo;
+    @Autowired
+    private IssueNumberRepository numberRepo;
+    @Autowired
+    private WinningVerificationRepository winningRepo;
+    @Autowired
+    private DrawRoundRepository drawRepo;
 
     private Long newIssue(String code) {
         return issueRepo.saveAndFlush(NumberIssue.create(
@@ -114,6 +129,7 @@ class AnonymousVerificationRepositoryTest {
         assertEquals(ReviewStatus.APPROVED, found.getReviewStatus());
         assertEquals("확인했어요", found.getAdminComment());
         assertNotNull(found.getReviewedAt());
+        assertTrue(found.isPublicVisible());   // 승인하면 공개
     }
 
     @Test
@@ -133,5 +149,47 @@ class AnonymousVerificationRepositoryTest {
 
         assertThrows(DataIntegrityViolationException.class,
                 () -> repo.saveAndFlush(register(issueB, "PROOFCODE007", hash('h'))));
+    }
+
+    @Test
+    void 상태별_목록은_최신순으로_나온다() {
+        Long i1 = newIssue("PROOFCODE008");
+        Long i2 = newIssue("PROOFCODE009");
+        AnonymousVerification first = repo.saveAndFlush(register(i1, "PROOFCODE008", hash('i')));
+        AnonymousVerification second = repo.saveAndFlush(register(i2, "PROOFCODE009", hash('j')));
+        first.review(ReviewStatus.APPROVED, null, LocalDateTime.now());
+        repo.saveAndFlush(first);
+        PageRequest latestFirst = PageRequest.of(0, 1000, Sort.by(Sort.Direction.DESC, "id"));
+
+        List<Long> pending = repo.findByReviewStatus(ReviewStatus.PENDING, latestFirst).getContent()
+                .stream().map(AnonymousVerification::getId).toList();
+        List<Long> approved = repo.findByReviewStatus(ReviewStatus.APPROVED, latestFirst).getContent()
+                .stream().map(AnonymousVerification::getId).toList();
+
+        assertTrue(pending.contains(second.getId()));
+        assertFalse(pending.contains(first.getId()));
+        assertTrue(approved.contains(first.getId()));
+    }
+
+    @Test
+    void 발급건별_최고등수를_한번에_가져온다() {
+        // winning_verification 의 회차는 draw_round 를 참조하므로 DB 에 있는 가장 최근 회차를 쓴다.
+        DrawRound round = drawRepo.findTopByOrderByRoundNoDesc().orElse(null);
+        Assumptions.assumeTrue(round != null, "draw_round 데이터가 없으면 건너뜀");
+
+        Long winIssue = newIssue("PROOFCODE010");
+        Long noWinIssue = newIssue("PROOFCODE011");
+        IssueNumber g1 = numberRepo.saveAndFlush(IssueNumber.of(winIssue, 1, "01-02-03-04-05-06", List.of(1, 2, 3, 4, 5, 6)));
+        IssueNumber g2 = numberRepo.saveAndFlush(IssueNumber.of(winIssue, 2, "07-08-09-10-11-12", List.of(7, 8, 9, 10, 11, 12)));
+        IssueNumber g3 = numberRepo.saveAndFlush(IssueNumber.of(noWinIssue, 1, "13-14-15-16-17-18", List.of(13, 14, 15, 16, 17, 18)));
+        winningRepo.insertIfAbsent(g1.getId(), round.getRoundNo(), 4, false, 4, "VERIFIED");
+        winningRepo.insertIfAbsent(g2.getId(), round.getRoundNo(), 5, false, 3, "VERIFIED");
+        winningRepo.insertIfAbsent(g3.getId(), round.getRoundNo(), 1, false, null, "VERIFIED");
+
+        List<Object[]> rows = repo.findBestRanksByIssueIds(List.of(winIssue, noWinIssue));
+
+        assertEquals(1, rows.size());                 // 당첨 조합이 없는 발급 건은 나오지 않는다
+        assertEquals(winIssue, rows.get(0)[0]);
+        assertEquals(3, rows.get(0)[1]);              // 4등과 3등 중 높은 쪽(숫자가 작은 쪽)
     }
 }
