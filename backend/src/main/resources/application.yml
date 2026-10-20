@@ -23,6 +23,11 @@ spring:
       hibernate:
         jdbc:
           time_zone: Asia/Seoul
+  servlet:
+    multipart:
+      # 사진 업로드(당첨 인증 등록) 한도. 기본값 1MB 는 휴대폰 사진에 너무 작아서 올린다.
+      max-file-size: ${fortuna.upload.max-size-mb}MB   # 사진 1장 한도. 아래 fortuna.upload.max-size-mb 와 같은 값을 쓴다.
+      max-request-size: 12MB                            # 사진 + 글자 칸(댓글 등)을 합친 한도. 사진 한도보다 조금 넉넉히.
   jackson:
     time-zone: Asia/Seoul
   cache:
@@ -34,6 +39,10 @@ fortuna:
     ttl-minutes: 30                  # 임시 결과를 보관하는 시간 (분). 이 시간이 지나면 확정할 수 없다.
     max-games: 50                    # 한 번에 만들 수 있는 최대 게임 수 (1~이 값)
     max-issue-per-combo: 3           # 같은 회차에서 같은 조합을 확정 발급할 수 있는 최대 횟수 (이 횟수가 찬 조합은 번호 생성에서 제외)
+  # 사진 업로드 (common.file.UploadProperties 가 읽는다)
+  upload:
+    dir: ${UPLOAD_DIR:}              # 사진 저장 폴더. .env 의 UPLOAD_DIR. 프로젝트(Git) 밖 절대 경로. .env 에서는 \ 대신 / 로 적는다.
+    max-size-mb: 10                  # 사진 1장 최대 용량(MB)
   # 조회 횟수 제한 (common.security.RateLimitProperties 가 읽는다)
   rate-limit:
     issue-lookup-per-minute: 30      # 발급코드 상세 조회(API-05)를 한 접속지(IP)에서 1분에 부를 수 있는 횟수. 넘으면 429

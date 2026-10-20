@@ -23,6 +23,7 @@ public enum ErrorCode {
     CONFLICT("COMMON-006", HttpStatus.CONFLICT, "요청이 현재 상태와 맞지 않아요."),
     TOO_MANY_REQUESTS("COMMON-007", HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많아요. 잠시 후 다시 시도해 주세요."),
     SERVICE_UNAVAILABLE("COMMON-008", HttpStatus.SERVICE_UNAVAILABLE, "지금은 이용할 수 없어요. 잠시 후 다시 시도해 주세요."),
+    PAYLOAD_TOO_LARGE("COMMON-009", HttpStatus.PAYLOAD_TOO_LARGE, "파일이 너무 커요. 더 작은 파일로 올려 주세요."),
     INTERNAL_ERROR("COMMON-999", HttpStatus.INTERNAL_SERVER_ERROR, "일시적인 오류가 발생했어요. 잠시 후 다시 시도해 주세요.");
 
     private final String code;
