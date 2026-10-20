@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 로또 용지 API.
- *  - POST /api/tickets/check  용지 QR 글자로 당첨 확인 (API-45, 조회 횟수 제한)
+ *  - POST /api/tickets/check  용지 QR 글자로 당첨 확인 (API-63, 조회 횟수 제한)
  *
  * 컨트롤러는 입력을 받아 서비스에 넘기고 결과를 감싸서 돌려주는 일만 한다.
  */

@@ -21,7 +21,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 로또 용지 당첨 확인 (API-45). 읽기 전용이라 DB 에 아무것도 저장하지 않는다.
+ * 로또 용지 당첨 확인 (API-63). 읽기 전용이라 DB 에 아무것도 저장하지 않는다.
  * 📚 배운 내용: @Service, @Transactional(readOnly = true)
  *
  * 흐름: 조회 횟수 제한 → QR 글자 해석(TicketQrParser) → 그 회차 당첨번호 조회 → 줄마다 등수 계산(WinningRankRule)

@@ -4,7 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 /**
- * 용지 당첨 확인 결과 (API-45)
+ * 용지 당첨 확인 결과 (API-63)
  *
  * 아직 당첨번호가 없는 회차(drawn = false)에는 당첨번호·등수가 모두 null 이고 message 에 안내 문구가 들어간다.
  * 이 경우는 오류가 아니라 정상 응답이다. (다음 회차 용지를 미리 사 둔 사용자가 흔히 만나는 상황)
