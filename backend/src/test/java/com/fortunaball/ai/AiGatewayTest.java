@@ -7,8 +7,10 @@ import com.fortunaball.ai.client.AiResponse;
 import com.fortunaball.ai.client.AiRole;
 import com.fortunaball.ai.usage.AiCostCalculator;
 import com.fortunaball.ai.usage.AiFeature;
+import com.fortunaball.ai.usage.AiPermit;
 import com.fortunaball.ai.usage.AiUsageGuard;
 import com.fortunaball.ai.usage.AiUsageRecorder;
+import com.fortunaball.ai.usage.AiUsageSnapshot;
 import com.fortunaball.common.exception.BusinessException;
 import com.fortunaball.common.exception.ErrorCode;
 import org.junit.jupiter.api.BeforeEach;
@@ -71,6 +73,14 @@ class AiGatewayTest {
     }
 
     @Test
+    void 남은_횟수_조회는_한도_검사기에_그대로_맡긴다() {
+        AiUsageSnapshot expected = new AiUsageSnapshot(false, 5, 1, 4, java.time.LocalDateTime.of(2026, 10, 21, 0, 0));
+        when(guard.snapshot("g", "ip", false)).thenReturn(expected);
+
+        assertSame(expected, gateway.usage("g", "ip", false));
+    }
+
+    @Test
     void 한도에_걸리면_세션을_주지_않고_오류를_그대로_던진다() {
         BusinessException limit = new BusinessException(ErrorCode.AI_USER_LIMIT);
         doThrow(limit).when(guard).check(AiFeature.DREAM, "g", "ip", false);
@@ -102,6 +112,32 @@ class AiGatewayTest {
         session.call(REQUEST);
 
         verify(guard).check(AiFeature.ANALYST, "g", "ip", false);   // 정확히 1번
+    }
+
+    @Test
+    void 실패하면_차감했던_무료_횟수를_돌려주고_성공하면_돌려주지_않는다() {
+        AiPermit permit = AiPermit.none();
+        when(guard.check(AiFeature.DREAM, "g", "ip", false)).thenReturn(permit);
+        when(client.complete(REQUEST)).thenReturn(new AiResponse("답", "m", 1, 1))
+                .thenThrow(new BusinessException(ErrorCode.AI_CALL_FAILED, "msg", "HTTP 500"));
+        AiSession session = gateway.open(AiFeature.DREAM, "g", "ip");
+
+        session.call(REQUEST);   // 성공
+        verify(guard, never()).refund(permit);
+
+        assertThrows(BusinessException.class, () -> session.call(REQUEST));   // 실패
+        verify(guard).refund(permit);
+    }
+
+    @Test
+    void 예상하지_못한_오류에도_횟수를_돌려준다() {
+        AiPermit permit = AiPermit.none();
+        when(guard.check(AiFeature.DREAM, "g", "ip", false)).thenReturn(permit);
+        when(client.complete(REQUEST)).thenThrow(new IllegalStateException("x"));
+
+        assertThrows(BusinessException.class, () -> gateway.open(AiFeature.DREAM, "g", "ip").call(REQUEST));
+
+        verify(guard).refund(permit);
     }
 
     @Test

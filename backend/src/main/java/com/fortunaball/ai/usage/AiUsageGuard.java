@@ -89,14 +89,15 @@ public class AiUsageGuard {
      * @param guestKey 비회원 토큰 값 (로그에 남기지 않는다)
      * @param clientIp 접속지 (로그에 남기지 않는다)
      */
-    public void check(AiFeature feature, String guestKey, String clientIp) {
-        check(feature, guestKey, clientIp, false);
+    public AiPermit check(AiFeature feature, String guestKey, String clientIp) {
+        return check(feature, guestKey, clientIp, false);
     }
 
     /**
      * @param admin 관리자 요청이면 true. 키 없음만 검사하고 나머지 한도·횟수 제한은 모두 건너뛴다.
+     * @return 차감 영수증. AI 호출이 실패하면 refund() 로 무료 횟수를 되돌릴 때 쓴다. (관리자는 되돌릴 것이 없는 영수증)
      */
-    public void check(AiFeature feature, String guestKey, String clientIp, boolean admin) {
+    public AiPermit check(AiFeature feature, String guestKey, String clientIp, boolean admin) {
         // 1. 키 없음
         if (!props.hasApiKey()) {
             block(feature, CODE_NOT_CONFIGURED);
@@ -106,7 +107,7 @@ public class AiUsageGuard {
 
         // 관리자는 여기서 통과. (횟수를 세지도 않는다)
         if (admin) {
-            return;
+            return AiPermit.none();
         }
 
         // 2. 1분 연타 (사용자·접속지 따로)
@@ -137,12 +138,64 @@ public class AiUsageGuard {
         int guestCount = increment(guestDaily, today, guestKey);
         int ipCount = increment(ipDaily, today, clientIp);
         if (guestCount > props.userDailyLimit() || ipCount > props.ipDailyLimit()) {
+            // 막힌 시도는 횟수를 쓰지 않은 것이므로 방금 올린 카운터를 되돌린다.
+            // (안 되돌리면 막힌 시도만큼 카운터가 부풀어서, 나중에 실패 환불을 해도 남은 횟수가 실제보다 적게 나온다)
+            decrement(guestDaily, today, guestKey);
+            decrement(ipDaily, today, clientIp);
             block(feature, CODE_USER_LIMIT);
             // 식별값 자체는 남기지 않고 횟수만 남긴다.
             throw new BusinessException(ErrorCode.AI_USER_LIMIT, ErrorCode.AI_USER_LIMIT.getDefaultMessage(),
                     "사용자별 일일 횟수 초과: guestCount=" + guestCount + "/" + props.userDailyLimit()
                             + " ipCount=" + ipCount + "/" + props.ipDailyLimit());
         }
+        return new AiPermit(true, today, guestKey, clientIp);
+    }
+
+    /**
+     * AI 호출이 실패했을 때 차감했던 무료 횟수를 되돌린다. (사용자 잘못이 아니므로)
+     * 한 영수증으로는 한 번만 되돌리고, 차감한 날짜의 횟수에서 뺀다. 0 아래로는 내려가지 않는다.
+     */
+    public void refund(AiPermit permit) {
+        if (permit == null || !permit.consumed() || !permit.markRefunded()) {
+            return;
+        }
+        decrement(guestDaily, permit.date(), permit.guestKey());
+        decrement(ipDaily, permit.date(), permit.clientIp());
+    }
+
+    private static void decrement(Cache<String, AtomicInteger> cache, LocalDate date, String id) {
+        AtomicInteger counter = cache.getIfPresent(date + ":" + id);
+        if (counter != null) {
+            counter.updateAndGet(value -> Math.max(0, value - 1));
+        }
+    }
+
+    /**
+     * 오늘 남은 무료 횟수를 알려 준다. 횟수를 쓰지 않는다. (화면에 남은 횟수를 보여 주는 용도)
+     *
+     * ⚠ 남은 횟수는 "사용자 한도"와 "접속지 한도" 중 먼저 바닥나는 쪽 기준이다.
+     *    (접속지를 여럿이 쓰면 사용자 한도가 남아 있어도 접속지 한도 때문에 막힐 수 있어서, 화면 숫자가 사실과 맞게 한다)
+     * 서비스 전체 상한(하루 호출·월 비용)은 사용자에게 보일 값이 아니라서 여기에 넣지 않는다.
+     *
+     * @param admin 관리자면 제한이 없다고 알려 준다.
+     */
+    public AiUsageSnapshot snapshot(String guestKey, String clientIp, boolean admin) {
+        LocalDate today = LocalDate.now(clock);
+        LocalDateTime resetAt = today.plusDays(1).atStartOfDay();
+        if (admin) {
+            return new AiUsageSnapshot(true, props.userDailyLimit(), 0, props.userDailyLimit(), resetAt);
+        }
+        int guestUsed = peek(guestDaily, today, guestKey);
+        int ipUsed = peek(ipDaily, today, clientIp);
+        int remaining = Math.max(0, Math.min(props.userDailyLimit() - guestUsed, props.ipDailyLimit() - ipUsed));
+        // 쓴 횟수는 사용자 본인이 쓴 횟수다. (한도를 넘겨 막힌 시도는 한도까지만 보여 준다)
+        int used = Math.min(guestUsed, props.userDailyLimit());
+        return new AiUsageSnapshot(false, props.userDailyLimit(), used, remaining, resetAt);
+    }
+
+    private static int peek(Cache<String, AtomicInteger> cache, LocalDate today, String id) {
+        AtomicInteger counter = cache.getIfPresent(today + ":" + id);
+        return counter == null ? 0 : counter.get();
     }
 
     private static int increment(Cache<String, AtomicInteger> cache, LocalDate today, String id) {

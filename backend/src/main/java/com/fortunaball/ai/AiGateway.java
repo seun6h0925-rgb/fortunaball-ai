@@ -4,8 +4,10 @@ import com.fortunaball.ai.client.AiClient;
 import com.fortunaball.ai.client.AiProperties;
 import com.fortunaball.ai.usage.AiCostCalculator;
 import com.fortunaball.ai.usage.AiFeature;
+import com.fortunaball.ai.usage.AiPermit;
 import com.fortunaball.ai.usage.AiUsageGuard;
 import com.fortunaball.ai.usage.AiUsageRecorder;
+import com.fortunaball.ai.usage.AiUsageSnapshot;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.stereotype.Service;
 
@@ -51,8 +53,13 @@ public class AiGateway {
      *              관리자 여부는 호출하는 쪽이 관리자 로그인으로 판단해서 넘긴다. 사용자가 보낸 값을 그대로 믿으면 안 된다.
      */
     public AiSession open(AiFeature feature, String guestKey, String clientIp, boolean admin) {
-        guard.check(feature, guestKey, clientIp, admin);
-        return new AiSession(feature, client, props, recorder, costCalculator);
+        AiPermit permit = guard.check(feature, guestKey, clientIp, admin);
+        return new AiSession(feature, client, props, recorder, costCalculator, guard, permit);
+    }
+
+    /** 오늘 남은 무료 횟수를 알려 준다. (횟수를 쓰지 않는다. 화면 오른쪽 위 표시용) */
+    public AiUsageSnapshot usage(String guestKey, String clientIp, boolean admin) {
+        return guard.snapshot(guestKey, clientIp, admin);
     }
 
     /** AI 를 부르지 않고 정책 고정 응답으로 끝낸 요청을 기록한다. (예: OFF_TOPIC, GUARANTEE_REQUEST) */

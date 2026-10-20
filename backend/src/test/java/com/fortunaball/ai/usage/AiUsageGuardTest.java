@@ -222,6 +222,143 @@ class AiUsageGuardTest {
     }
 
     @Test
+    void 처음에는_무료_횟수가_모두_남아_있다() {
+        AiUsageGuard guard = guard(AiTestFixtures.props("k"));
+
+        AiUsageSnapshot snapshot = guard.snapshot("guest-1", "1.1.1.1", false);
+
+        assertFalse(snapshot.unlimited());
+        assertEquals(5, snapshot.dailyFreeLimit());
+        assertEquals(0, snapshot.usedToday());
+        assertEquals(5, snapshot.remainingToday());
+        assertEquals(LocalDateTime.of(2026, 10, 21, 0, 0), snapshot.resetAt());   // 다음 날 서울 0시
+    }
+
+    @Test
+    void 쓴_만큼_남은_횟수가_줄고_조회는_횟수를_쓰지_않는다() {
+        AiUsageGuard guard = guard(AiTestFixtures.props("k"));
+        guard.check(FEATURE, "guest-1", "1.1.1.1");
+        guard.check(FEATURE, "guest-1", "1.1.1.1");
+
+        AiUsageSnapshot first = guard.snapshot("guest-1", "1.1.1.1", false);
+        AiUsageSnapshot second = guard.snapshot("guest-1", "1.1.1.1", false);   // 몇 번을 조회해도 그대로
+
+        assertEquals(2, first.usedToday());
+        assertEquals(3, first.remainingToday());
+        assertEquals(3, second.remainingToday());
+    }
+
+    @Test
+    void 한도를_다_쓰면_남은_횟수는_0이고_쓴_횟수는_한도까지만_보인다() {
+        AiUsageGuard guard = guard(AiTestFixtures.props("k", 300, "10", 2, 20, 100));
+        guard.check(FEATURE, "guest-1", "1.1.1.1");
+        guard.check(FEATURE, "guest-1", "1.1.1.1");
+        assertEquals(ErrorCode.AI_USER_LIMIT, codeOf(() -> guard.check(FEATURE, "guest-1", "1.1.1.1")));   // 막힌 시도(3번째)
+
+        AiUsageSnapshot snapshot = guard.snapshot("guest-1", "1.1.1.1", false);
+
+        assertEquals(0, snapshot.remainingToday());
+        assertEquals(2, snapshot.usedToday());   // 3 이 아니라 한도(2)까지만
+    }
+
+    @Test
+    void 접속지_한도가_먼저_바닥나면_그_기준으로_남은_횟수를_보여_준다() {
+        // 사용자 한도 5 인데 접속지 한도는 2. 같은 접속지의 다른 사람이 2번 쓴 상태.
+        AiUsageGuard guard = guard(AiTestFixtures.props("k", 300, "10", 5, 2, 100));
+        guard.check(FEATURE, "guest-a", "9.9.9.9");
+        guard.check(FEATURE, "guest-b", "9.9.9.9");
+
+        AiUsageSnapshot snapshot = guard.snapshot("guest-c", "9.9.9.9", false);   // guest-c 는 한 번도 안 썼다
+
+        assertEquals(0, snapshot.usedToday());
+        assertEquals(0, snapshot.remainingToday());   // 접속지 한도(2)가 바닥나서 사실대로 0
+    }
+
+    @Test
+    void 날짜가_바뀌면_남은_횟수가_다시_채워진다() {
+        AiUsageGuard guard = guard(AiTestFixtures.props("k"));
+        guard.check(FEATURE, "guest-1", "1.1.1.1");
+        assertEquals(4, guard.snapshot("guest-1", "1.1.1.1", false).remainingToday());
+
+        clock.set(ZonedDateTime.of(2026, 10, 21, 0, 0, 1, 0, SEOUL));
+
+        assertEquals(5, guard.snapshot("guest-1", "1.1.1.1", false).remainingToday());
+    }
+
+    @Test
+    void 관리자는_제한_없음으로_알려_준다() {
+        AiUsageGuard guard = guard(AiTestFixtures.props("k"));
+
+        assertTrue(guard.snapshot("guest-1", "1.1.1.1", true).unlimited());
+    }
+
+    @Test
+    void 실패해서_돌려주면_무료_횟수가_다시_생긴다() {
+        AiUsageGuard guard = guard(AiTestFixtures.props("k", 300, "10", 1, 20, 100));
+        AiPermit permit = guard.check(FEATURE, "guest-1", "1.1.1.1");
+        assertEquals(0, guard.snapshot("guest-1", "1.1.1.1", false).remainingToday());
+
+        guard.refund(permit);
+
+        assertEquals(1, guard.snapshot("guest-1", "1.1.1.1", false).remainingToday());
+        assertDoesNotThrow(() -> guard.check(FEATURE, "guest-1", "1.1.1.1"));   // 다시 쓸 수 있다
+    }
+
+    @Test
+    void 한_영수증으로는_한_번만_돌려준다() {
+        AiUsageGuard guard = guard(AiTestFixtures.props("k"));
+        guard.check(FEATURE, "guest-1", "1.1.1.1");                          // 1회 사용
+        AiPermit permit = guard.check(FEATURE, "guest-1", "1.1.1.1");        // 2회 사용
+        assertEquals(3, guard.snapshot("guest-1", "1.1.1.1", false).remainingToday());
+
+        guard.refund(permit);
+        guard.refund(permit);   // 두 번 불러도
+        guard.refund(permit);
+
+        assertEquals(4, guard.snapshot("guest-1", "1.1.1.1", false).remainingToday());   // 1만 돌아온다
+    }
+
+    @Test
+    void 관리자_영수증과_null은_돌려줄_것이_없다() {
+        AiUsageGuard guard = guard(AiTestFixtures.props("k"));
+        guard.check(FEATURE, "guest-1", "1.1.1.1");
+
+        guard.refund(guard.check(FEATURE, "guest-1", "1.1.1.1", true));   // 관리자 영수증
+        guard.refund(AiPermit.none());
+        guard.refund(null);
+
+        assertEquals(4, guard.snapshot("guest-1", "1.1.1.1", false).remainingToday());   // 변화 없음
+    }
+
+    @Test
+    void 자정을_넘겨_실패해도_차감한_날짜의_횟수에서_돌려준다() {
+        AiUsageGuard guard = guard(AiTestFixtures.props("k"));
+        AiPermit permit = guard.check(FEATURE, "guest-1", "1.1.1.1");   // 10/20 에 사용
+        clock.set(ZonedDateTime.of(2026, 10, 21, 0, 0, 5, 0, SEOUL));    // 호출이 끝나기 전에 자정이 지남
+        guard.check(FEATURE, "guest-1", "1.1.1.1");                      // 10/21 에 1회 사용
+
+        guard.refund(permit);   // 10/20 의 횟수만 돌려준다
+
+        assertEquals(4, guard.snapshot("guest-1", "1.1.1.1", false).remainingToday());   // 10/21 은 그대로
+    }
+
+    @Test
+    void 막힌_시도는_횟수를_쓰지_않아서_환불하면_정확히_돌아온다() {
+        AiUsageGuard guard = guard(AiTestFixtures.props("k", 300, "10", 2, 20, 100));
+        AiPermit first = guard.check(FEATURE, "guest-1", "1.1.1.1");
+        guard.check(FEATURE, "guest-1", "1.1.1.1");
+        // 한도(2)를 넘긴 시도가 여러 번 막힌다
+        assertEquals(ErrorCode.AI_USER_LIMIT, codeOf(() -> guard.check(FEATURE, "guest-1", "1.1.1.1")));
+        assertEquals(ErrorCode.AI_USER_LIMIT, codeOf(() -> guard.check(FEATURE, "guest-1", "1.1.1.1")));
+        assertEquals(0, guard.snapshot("guest-1", "1.1.1.1", false).remainingToday());
+
+        guard.refund(first);   // 첫 호출이 실패했다면
+
+        // 막힌 시도가 카운터를 부풀리지 않았으므로 정확히 1회가 돌아온다 (2가 아니라 1)
+        assertEquals(1, guard.snapshot("guest-1", "1.1.1.1", false).remainingToday());
+    }
+
+    @Test
     void 오류_상세에_사용자_식별값이_들어가지_않는다() {
         AiUsageGuard guard = guard(AiTestFixtures.props("k", 300, "10", 1, 20, 100));
         guard.check(FEATURE, "guest-secret-token-0001", "7.7.7.7");
