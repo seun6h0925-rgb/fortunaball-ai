@@ -47,7 +47,7 @@ class IssueQueryServiceTest {
     private final NumberIssueRepository issueRepo = mock(NumberIssueRepository.class);
     private final IssueNumberRepository numberRepo = mock(IssueNumberRepository.class);
     private final RequestRateLimiter limiter = mock(RequestRateLimiter.class);
-    private final RateLimitProperties rateProps = new RateLimitProperties(30, 30);
+    private final RateLimitProperties rateProps = new RateLimitProperties(30, 30, 30);
     private IssueQueryService service;
 
     @BeforeEach
