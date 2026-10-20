@@ -55,7 +55,7 @@ fortuna:
     monthly-cost-limit-usd: 10       # 서비스 전체 월 비용 상한(USD, 매월 1일부터). 넘으면 AI 만 중지(503)
     user-daily-limit: 5              # 비회원 1명(guest_token)의 하루 무료 AI 횟수. 넘으면 429
     ip-daily-limit: 20               # 접속지(IP) 1곳의 하루 AI 횟수. guest_token 을 바꿔 우회하는 것을 막는 안전망
-    per-minute-limit: 5              # 1분에 보낼 수 있는 AI 요청 횟수(연타 방지). 넘으면 429
+    per-minute-limit: 50             # 1분에 보낼 수 있는 AI 요청 횟수(사용자별·접속지별 각각, 자동 호출 방지용). 일반 사용은 못 느끼는 값. 넘으면 429
     # 모델별 가격(100만 토큰당 USD). 모델을 바꾸면 같이 바꾼다. 비용 추정과 월 한도 계산에 쓴다.
     classifier-input-per-million-usd: 0.10
     classifier-output-per-million-usd: 0.50

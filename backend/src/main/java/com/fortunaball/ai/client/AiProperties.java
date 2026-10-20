@@ -24,7 +24,8 @@ import java.math.BigDecimal;
  * @param monthlyCostLimitUsd         서비스 전체 월 비용 상한 (USD, 서울 기준 매월 1일부터)
  * @param userDailyLimit              비회원 1명(guest_token)이 하루에 쓸 수 있는 무료 AI 횟수
  * @param ipDailyLimit                접속지(IP) 1곳이 하루에 쓸 수 있는 AI 횟수 (guest_token 을 바꿔 우회하는 것을 막는 안전망)
- * @param perMinuteLimit              1분에 보낼 수 있는 AI 요청 횟수 (연타 방지)
+ * @param perMinuteLimit              1분에 보낼 수 있는 AI 요청 횟수 (자동 호출 방지용. 사용자(guest_token)별·접속지(IP)별로 각각 센다.
+ *                                    일반 사용자는 못 느끼게 크게 두었다. 한 접속지를 여럿이 쓰는 발표장·학원에서도 걸리지 않게 하려는 값)
  * @param classifierInputPerMillionUsd  분류용 모델 입력 100만 토큰당 가격
  * @param classifierOutputPerMillionUsd 분류용 모델 출력 100만 토큰당 가격
  * @param answerInputPerMillionUsd      답변용 모델 입력 100만 토큰당 가격
@@ -41,7 +42,7 @@ public record AiProperties(
         @DefaultValue("10") BigDecimal monthlyCostLimitUsd,
         @DefaultValue("5") int userDailyLimit,
         @DefaultValue("20") int ipDailyLimit,
-        @DefaultValue("5") int perMinuteLimit,
+        @DefaultValue("50") int perMinuteLimit,
         @DefaultValue("0.10") BigDecimal classifierInputPerMillionUsd,
         @DefaultValue("0.50") BigDecimal classifierOutputPerMillionUsd,
         @DefaultValue("0.10") BigDecimal answerInputPerMillionUsd,

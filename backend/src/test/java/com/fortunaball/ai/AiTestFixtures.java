@@ -15,7 +15,7 @@ public final class AiTestFixtures {
 
     /** 키만 정하고 나머지는 기본값(시연용 한도) */
     public static AiProperties props(String apiKey) {
-        return props(apiKey, 300, "10", 5, 20, 5);
+        return props(apiKey, 300, "10", 5, 20, 50);
     }
 
     /** 한도 값을 직접 정한다 */
@@ -29,7 +29,7 @@ public final class AiTestFixtures {
     /** 분류용·답변용 모델 이름을 바꾼 설정 (실제 호출 확인용) */
     public static AiProperties propsWithModels(String apiKey, String classifierModel, String answerModel) {
         return new AiProperties(apiKey, "https://api.openai.com/v1", classifierModel, answerModel, 30,
-                300, new BigDecimal("10"), 5, 20, 5,
+                300, new BigDecimal("10"), 5, 20, 50,
                 new BigDecimal("0.10"), new BigDecimal("0.50"), new BigDecimal("0.10"), new BigDecimal("0.50"));
     }
 }
