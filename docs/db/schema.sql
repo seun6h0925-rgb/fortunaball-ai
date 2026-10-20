@@ -344,14 +344,22 @@ CREATE TABLE anonymous_verification (
   number_issue_id BIGINT      NOT NULL COMMENT '발급 기록 고유번호',
   file_upload_id  BIGINT      NOT NULL COMMENT '인증 사진 파일. 인증 1건당 사진 1개',
   issue_code      VARCHAR(20) NOT NULL COMMENT '발급코드',
+  ticket_hash     CHAR(64)    NOT NULL COMMENT '[추가 2026-10-20] 용지 QR 해시(SHA-256). 같은 용지 중복 등록 방지용. 일련번호 원문은 저장하지 않는다',
   `comment`       TEXT        NULL     COMMENT '사용자 댓글',
   review_status   VARCHAR(20) NOT NULL COMMENT 'PENDING / APPROVED / REJECTED / HIDDEN',
   is_public       TINYINT(1)  NOT NULL DEFAULT 0 COMMENT '승인된 인증의 공개 여부',
   admin_comment   TEXT        NULL     COMMENT '관리자 코멘트',
   created_at      DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
   reviewed_at     DATETIME    NULL     COMMENT '검수일자',
+  -- [추가 2026-10-20] 아래 두 칸은 코드에서 값을 넣지 않는다. DB 가 계산한다.
+  --   반려(REJECTED)가 아닌 건만 값이 있고, 반려 건은 NULL. UNIQUE 는 NULL 끼리는 겹쳐도 되므로
+  --   "발급코드당 인증 1건", "같은 용지 1건"을 반려 건만 빼고 DB 가 직접 지켜 준다. (반려되면 다시 등록 가능)
+  active_issue_id    BIGINT   GENERATED ALWAYS AS (IF(review_status = 'REJECTED', NULL, number_issue_id)) STORED COMMENT '[추가 2026-10-20] 반려 아닌 건의 발급 기록 번호(중복 방지용 보조 칸)',
+  active_ticket_hash CHAR(64) GENERATED ALWAYS AS (IF(review_status = 'REJECTED', NULL, ticket_hash)) STORED COMMENT '[추가 2026-10-20] 반려 아닌 건의 용지 해시(중복 방지용 보조 칸)',
   PRIMARY KEY (id),
   UNIQUE KEY uk_anonymous_verification_file (file_upload_id),
+  UNIQUE KEY uk_anonymous_verification_active_issue (active_issue_id),
+  UNIQUE KEY uk_anonymous_verification_active_ticket (active_ticket_hash),
   KEY idx_anonymous_verification_issue (number_issue_id),
   KEY idx_anonymous_verification_status (review_status, is_public),
   CONSTRAINT fk_anonymous_verification_issue FOREIGN KEY (number_issue_id) REFERENCES number_issue (id),

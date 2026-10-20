@@ -39,7 +39,7 @@ class TicketCheckServiceTest {
 
     private final DrawRoundRepository drawRepo = mock(DrawRoundRepository.class);
     private final RequestRateLimiter limiter = mock(RequestRateLimiter.class);
-    private final RateLimitProperties rateProps = new RateLimitProperties(30, 30, 25);
+    private final RateLimitProperties rateProps = new RateLimitProperties(30, 30, 25, 5);
     private TicketCheckService service;
 
     @BeforeEach

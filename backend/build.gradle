@@ -26,6 +26,7 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'   // 기본 CRUD (통계 집계는 직접 SQL)
     runtimeOnly 'com.mysql:mysql-connector-j'
     implementation 'com.github.ben-manes.caffeine:caffeine'                  // 번호 생성 임시 결과를 30분만 보관(만료 시간 있는 캐시). 버전은 Spring Boot 가 맞춰 준다.
+    implementation 'com.google.zxing:core:3.5.3'                             // 당첨 인증 사진 속 QR 읽기(이미지 → 문자열). 서버에서만 쓰고 AI 이미지 분석은 쓰지 않는다.
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'

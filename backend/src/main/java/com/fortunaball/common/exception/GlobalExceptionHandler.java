@@ -14,6 +14,9 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
@@ -65,12 +68,22 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             HttpMessageNotReadableException.class,
             MissingServletRequestParameterException.class,
+            MissingServletRequestPartException.class,
+            MultipartException.class,
             MethodArgumentTypeMismatchException.class
     })
     public ResponseEntity<ApiResponse<Void>> handleBadRequest(Exception e) {
         // 값 자체는 로그에 남기지 않고 오류 종류만 남긴다.
         log.warn("[{}] 잘못된 요청: {}", ErrorCode.INVALID_INPUT.getCode(), e.getClass().getSimpleName());
         return build(ErrorCode.INVALID_INPUT, ErrorCode.INVALID_INPUT.getDefaultMessage());
+    }
+
+    // ---- 업로드 용량 초과 (413) : 서버 설정 한도(spring.servlet.multipart)를 넘었을 때 ----
+    // MultipartException 보다 구체적인 예외라 이쪽이 먼저 처리된다.
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUploadTooLarge(MaxUploadSizeExceededException e) {
+        log.warn("[{}] 업로드 용량이 서버 한도를 넘음", ErrorCode.PAYLOAD_TOO_LARGE.getCode());
+        return build(ErrorCode.PAYLOAD_TOO_LARGE, ErrorCode.PAYLOAD_TOO_LARGE.getDefaultMessage());
     }
 
     // ---- 없는 주소 / 잘못된 요청 방식 ----

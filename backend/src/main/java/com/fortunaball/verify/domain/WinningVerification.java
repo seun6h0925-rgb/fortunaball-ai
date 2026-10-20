@@ -49,6 +49,10 @@ public class WinningVerification {
     @Column(name = "result_status", nullable = false, insertable = false, updatable = false, length = 20)
     private VerificationResultStatus resultStatus;
 
+    /** 우리 서비스 당첨 기록 공개 여부. 읽기만 한다. 바꿀 때는 Repository 의 updatePublic* 로만 바꾼다. */
+    @Column(name = "is_public", nullable = false, insertable = false, updatable = false)
+    private boolean publicVisible;
+
     @Column(name = "verified_at", insertable = false, updatable = false)
     private LocalDateTime verifiedAt;
 
@@ -68,5 +72,6 @@ public class WinningVerification {
     public boolean isBonusMatched() { return bonusMatched; }
     public Integer getWinningRank() { return winningRank; }
     public VerificationResultStatus getResultStatus() { return resultStatus; }
+    public boolean isPublicVisible() { return publicVisible; }
     public LocalDateTime getVerifiedAt() { return verifiedAt; }
 }
