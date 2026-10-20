@@ -19,4 +19,7 @@ public interface DrawPrizeRepository extends JpaRepository<DrawPrize, Long> {
 
     /** 한 회차의 1~5등 당첨금을 등수 순서로 (API-01, 02) */
     List<DrawPrize> findByRoundNoOrderByWinningRankAsc(int roundNo);
+
+    /** 회차 범위(양 끝 포함)의 당첨금을 회차 → 등수 순서로. (당첨금 추이 API-11) */
+    List<DrawPrize> findByRoundNoBetweenOrderByRoundNoAscWinningRankAsc(int fromRound, int toRound);
 }
