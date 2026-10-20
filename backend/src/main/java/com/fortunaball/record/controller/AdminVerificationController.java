@@ -7,8 +7,13 @@ import com.fortunaball.record.domain.ReviewStatus;
 import com.fortunaball.record.dto.AdminVerificationListResponse;
 import com.fortunaball.record.dto.VerificationReviewRequest;
 import com.fortunaball.record.dto.VerificationReviewResponse;
+import com.fortunaball.record.service.AdminVerificationPhotoService;
 import com.fortunaball.record.service.AdminVerificationService;
 import jakarta.validation.Valid;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 관리자 인증 검수 (API-28 목록, API-29 검수 처리).
+ * 관리자 인증 검수 (API-28 목록, API-29 검수 처리, API-62 사진 보기).
  *
  * ⚠ 관리자 로그인(세션)을 만들기 전이라 지금은 누구나 부를 수 있다. 관리자 사이트 단계에서 /api/admin/** 전체에 로그인 검사를 붙이고,
  *    그 전에는 서버를 외부에 공개하지 않는다. (배포 전 필수 확인 항목)
@@ -28,9 +33,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminVerificationController {
 
     private final AdminVerificationService service;
+    private final AdminVerificationPhotoService photoService;
 
-    public AdminVerificationController(AdminVerificationService service) {
+    public AdminVerificationController(AdminVerificationService service, AdminVerificationPhotoService photoService) {
         this.service = service;
+        this.photoService = photoService;
     }
 
     /** status: PENDING/APPROVED/REJECTED/HIDDEN (비우면 전체) */
@@ -46,6 +53,22 @@ public class AdminVerificationController {
     public ApiResponse<VerificationReviewResponse> review(@PathVariable("verificationId") Long verificationId,
                                                           @Valid @RequestBody VerificationReviewRequest request) {
         return ApiResponse.ok(service.review(verificationId, request));
+    }
+
+    /**
+     * 인증 사진 보기 (API-62). 사진 내용을 이미지로 그대로 돌려준다.
+     * ⚠ 개인정보가 담길 수 있는 사진이라 브라우저·중간 서버가 저장해 두지 못하게(no-store) 하고,
+     *    형식을 추측해서 실행하지 못하게(nosniff) 한다. 원래 파일 이름은 내려주지 않는다.
+     */
+    @GetMapping("/{verificationId}/photo")
+    public ResponseEntity<byte[]> photo(@PathVariable("verificationId") Long verificationId) {
+        AdminVerificationPhotoService.Photo photo = photoService.load(verificationId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(photo.contentType()))
+                .cacheControl(CacheControl.noStore())
+                .header("X-Content-Type-Options", "nosniff")
+                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"proof-" + verificationId + "." + photo.extension() + "\"")
+                .body(photo.bytes());
     }
 
     private static ReviewStatus parseStatus(String status) {
