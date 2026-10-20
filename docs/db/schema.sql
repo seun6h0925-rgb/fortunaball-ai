@@ -402,13 +402,16 @@ CREATE TABLE dream_interpretation (
   interpretation_summary TEXT        NOT NULL COMMENT '해석 요약',
   polarity               VARCHAR(20) NOT NULL COMMENT 'POSITIVE/CAUTION/MIXED',
   confidence             VARCHAR(20) NOT NULL COMMENT 'HIGH/MEDIUM/LOW',
+  origin_region          VARCHAR(10) NOT NULL DEFAULT 'GLOBAL' COMMENT '해석 지역: KR(한국 전통), GLOBAL(해외 자료·일반 상징)',
+  dream_source_id        BIGINT      NULL     COMMENT '해석 출처(dream_source). 출처를 특정하지 못하면 NULL',
   created_at             DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
   updated_at             DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '최종수정일',
   PRIMARY KEY (id),
   KEY idx_dream_interpretation_symbol (dream_symbol_id),
   CONSTRAINT fk_dream_interpretation_symbol FOREIGN KEY (dream_symbol_id) REFERENCES dream_symbol (id),
   CONSTRAINT ck_dream_interpretation_polarity CHECK (polarity IN ('POSITIVE','CAUTION','MIXED')),
-  CONSTRAINT ck_dream_interpretation_confidence CHECK (confidence IN ('HIGH','MEDIUM','LOW'))
+  CONSTRAINT ck_dream_interpretation_confidence CHECK (confidence IN ('HIGH','MEDIUM','LOW')),
+  CONSTRAINT ck_dream_interpretation_region CHECK (origin_region IN ('KR','GLOBAL'))
 ) ENGINE=InnoDB COMMENT='꿈 상황별 해석';
 
 -- 추천 번호는 문자열로 묶지 않고 번호 1개당 1행으로 저장한다
@@ -416,6 +419,7 @@ CREATE TABLE dream_symbol_number (
   id              BIGINT   NOT NULL AUTO_INCREMENT COMMENT '꿈 상징 번호 매핑 고유번호',
   dream_symbol_id BIGINT   NOT NULL COMMENT '꿈 상징 고유번호',
   number_value    INT      NOT NULL COMMENT '추천 번호',
+  number_origin   VARCHAR(20) NOT NULL DEFAULT 'SERVICE' COMMENT '번호 출처: SERVICE(서비스 참고 매핑), SMORFIA(나폴리 스모르피아), CHARADA(쿠바 차라다)',
   created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
   PRIMARY KEY (id),
   UNIQUE KEY uk_dream_symbol_number (dream_symbol_id, number_value),
@@ -434,6 +438,10 @@ CREATE TABLE dream_source (
   PRIMARY KEY (id),
   CONSTRAINT ck_dream_source_trust CHECK (trust_level IN ('HIGH','MEDIUM','LOW'))
 ) ENGINE=InnoDB COMMENT='꿈 데이터 출처';
+
+-- 해석 출처 연결: dream_source 테이블이 만들어진 뒤에 외래키를 건다
+ALTER TABLE dream_interpretation
+  ADD CONSTRAINT fk_dream_interpretation_source FOREIGN KEY (dream_source_id) REFERENCES dream_source (id);
 
 CREATE TABLE dream_symbol_source (
   id              BIGINT   NOT NULL AUTO_INCREMENT COMMENT '꿈 상징 출처 연결 고유번호',
