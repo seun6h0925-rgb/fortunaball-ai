@@ -17,6 +17,8 @@ import com.fortunaball.ai.AiGateway;
 import com.fortunaball.ai.AiSession;
 import com.fortunaball.ai.client.AiRequest;
 import com.fortunaball.ai.client.AiResponse;
+import com.fortunaball.ai.policy.AiPolicy;
+import com.fortunaball.ai.policy.AiPolicyEngine;
 import com.fortunaball.ai.usage.AiFeature;
 import com.fortunaball.ai.usage.AiUsageSnapshot;
 import com.fortunaball.common.exception.BusinessException;
@@ -39,6 +41,11 @@ import org.mockito.ArgumentCaptor;
 
 class DreamServiceTest {
 
+    /** 시드(docs/db/seed_ai_policy.sql) 중 꿈풀이에 적용되는 정책만 옮겨 둔 테스트용 값 */
+    private static final List<AiPolicy> POLICIES = List.of(
+            new AiPolicy("GUARANTEE_REQUEST", "GUARANTEE_REQUEST", "ALL", 20, "보장 불가 안내", List.of("당첨번호알려", "1등되는번호")),
+            new AiPolicy("DREAM_OFF_TOPIC", "OFF_TOPIC", "DREAM", 70, "꿈 내용을 적어 주세요", List.of("꿈", "꿨", "꾼", "꾸었", "꾸는")));
+
     private DreamKnowledgeRepository repository;
     private AiGateway gateway;
     private AiSession session;
@@ -52,7 +59,7 @@ class DreamServiceTest {
         session = mock(AiSession.class);
         stat = mock(StatAnalysisService.class);
         service = new DreamService(repository, new DreamSymbolMatcher(), new DreamNumberExtractor(),
-                new DreamNumberPicker(), new DreamInterpretationSelector(), new DreamPromptBuilder(), gateway, stat);
+                new DreamNumberPicker(), new DreamInterpretationSelector(), new DreamPromptBuilder(), gateway, stat, new AiPolicyEngine(() -> POLICIES));
 
         when(repository.loadActiveSymbols()).thenReturn(List.of(
                 new SymbolEntry(1, "돼지", List.of("새끼돼지")),
@@ -84,7 +91,7 @@ class DreamServiceTest {
 
     @Test
     void 상징이_없으면_고정_응답이고_AI를_부르지_않으며_횟수를_차감하지_않는다() {
-        DreamResponse r = service.interpret(req("아무 상징도 없는 평범한 이야기입니다", false), "g", "1.1.1.1");
+        DreamResponse r = service.interpret(req("아무 상징도 없는 평범한 꿈을 꿨습니다", false), "g", "1.1.1.1");
 
         assertEquals("NO_MATCH", r.matchResult());
         assertEquals("DREAM_LOW_RELEVANCE", r.policyCode());
@@ -93,6 +100,29 @@ class DreamServiceTest {
         assertNull(r.interpretation());
         verify(gateway).recordBlocked(AiFeature.DREAM, "DREAM_LOW_RELEVANCE");
         verify(gateway, never()).open(any(AiFeature.class), anyString(), anyString());   // 차감은 open 에서 일어난다
+    }
+
+    @Test
+    void 꿈이_아닌_입력은_꿈풀이_주제_이탈_고정_응답이고_AI도_번호도_없다() {
+        DreamResponse r = service.interpret(req("오늘 점심 뭐 먹을지 3시에 정해요", false), "g", "1.1.1.1");
+
+        assertEquals("NO_MATCH", r.matchResult());
+        assertEquals("DREAM_OFF_TOPIC", r.policyCode());
+        assertEquals("꿈 내용을 적어 주세요", r.message());
+        assertTrue(r.numbers().isEmpty());          // 숫자 3 이 있어도 번호 후보로 쓰지 않는다
+        assertTrue(!r.suggestStatGeneration());
+        verify(gateway).recordBlocked(AiFeature.DREAM, "DREAM_OFF_TOPIC");
+        verify(gateway, never()).open(any(AiFeature.class), anyString(), anyString());
+    }
+
+    @Test
+    void 당첨_보장을_요구하면_정책_고정_응답이고_AI를_부르지_않는다() {
+        DreamResponse r = service.interpret(req("돼지꿈 꿨으니 1등 되는 번호 알려줘", false), "g", "1.1.1.1");
+
+        assertEquals("GUARANTEE_REQUEST", r.policyCode());
+        assertEquals("보장 불가 안내", r.message());
+        verify(gateway).recordBlocked(AiFeature.DREAM, "GUARANTEE_REQUEST");
+        verify(gateway, never()).open(any(AiFeature.class), anyString(), anyString());
     }
 
     @Test

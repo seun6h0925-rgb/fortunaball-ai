@@ -4,6 +4,9 @@ import com.fortunaball.ai.AiGateway;
 import com.fortunaball.ai.AiSession;
 import com.fortunaball.ai.client.AiRequest;
 import com.fortunaball.ai.client.AiResponse;
+import com.fortunaball.ai.policy.AiPolicyEngine;
+import com.fortunaball.ai.policy.PolicyContext;
+import com.fortunaball.ai.policy.PolicyHit;
 import com.fortunaball.ai.usage.AiFeature;
 import com.fortunaball.ai.usage.AiUsageSnapshot;
 import com.fortunaball.common.exception.BusinessException;
@@ -38,7 +41,8 @@ import org.springframework.stereotype.Service;
  *
  *  1. 입력 검사 (5~300자)
  *  2. 상징 찾기 (이름·별칭 일치, AI 안 씀) + 꿈 속 숫자 찾기
- *  3. 상징이 하나도 없으면 → 고정 응답 DREAM_LOW_RELEVANCE.  AI 를 부르지 않고 무료 횟수도 차감하지 않는다.
+ *  3. 정책 검사 (AiPolicyEngine): 당첨 보장·구매 유도·절박한 요청, 꿈이 아닌 입력(DREAM_OFF_TOPIC)이면 고정 응답.
+ *     상징이 하나도 없으면 → 고정 응답 DREAM_LOW_RELEVANCE.  어느 쪽이든 AI 를 부르지 않고 무료 횟수도 차감하지 않는다.
  *  4. 해석 고르기 (한국 전통 우선) → 번호 고르기 (꿈 속 숫자 → 상징 번호 → 동의 시 통계 보완)
  *  5. 무료 횟수 1회 차감 후 AI 호출 (AI 는 해석을 쉬운 문장으로 풀어 쓰기만 한다) → 실패하면 횟수 환불(AiSession 이 처리)
  *  6. 금지 표현·길이 검사 → 통과 못 하면 AI 문장 대신 DB 해석으로 만든 대체 문장을 쓴다
@@ -74,11 +78,12 @@ public class DreamService {
     private final DreamPromptBuilder promptBuilder;
     private final AiGateway gateway;
     private final StatAnalysisService statService;
+    private final AiPolicyEngine policyEngine;
 
     public DreamService(DreamKnowledgeRepository repository, DreamSymbolMatcher matcher,
                         DreamNumberExtractor numberExtractor, DreamNumberPicker numberPicker,
                         DreamInterpretationSelector selector, DreamPromptBuilder promptBuilder,
-                        AiGateway gateway, StatAnalysisService statService) {
+                        AiGateway gateway, StatAnalysisService statService, AiPolicyEngine policyEngine) {
         this.repository = repository;
         this.matcher = matcher;
         this.numberExtractor = numberExtractor;
@@ -87,6 +92,7 @@ public class DreamService {
         this.promptBuilder = promptBuilder;
         this.gateway = gateway;
         this.statService = statService;
+        this.policyEngine = policyEngine;
     }
 
     public DreamResponse interpret(DreamRequest request, String guestKey, String clientIp) {
@@ -96,6 +102,15 @@ public class DreamService {
         List<SymbolEntry> entries = repository.loadActiveSymbols();
         List<MatchedSymbol> symbols = matcher.match(dream, entries);
         List<Integer> dreamNumbers = numberExtractor.extract(dream);
+
+        // 정책에 걸리면(당첨 보장 요구, 구매 유도, 절박한 요청, 꿈이 아닌 입력) AI 없이 정책 문구로 응답한다.
+        // 이때는 번호도 만들지 않는다. 횟수 차감 없이 기록만 남긴다.
+        PolicyHit hit = policyEngine.check(PolicyContext.dream(dream, !symbols.isEmpty())).orElse(null);
+        if (hit != null) {
+            gateway.recordBlocked(AiFeature.DREAM, hit.policyCode());
+            return new DreamResponse(DreamMatchResult.NO_MATCH.name(), hit.policyCode(), hit.message(), false,
+                    List.of(), null, List.of(), List.of(), BASIS_NOTICE, NOTICE, remaining(guestKey, clientIp));
+        }
 
         // 상징이 없으면 AI 없이 고정 응답. 횟수 차감 없이 기록만 남긴다.
         if (symbols.isEmpty()) {
