@@ -8,7 +8,8 @@ import org.springframework.http.HttpStatus;
  *
  * 코드 규칙: 영역-번호
  *   COMMON : 공통(입력값, 없음, 서버 오류 등)
- *   앞으로 기능을 만들 때 영역을 추가한다. (예: ISSUE 번호 발급, AI, STORE 판매점, ADMIN 관리자)
+ *   AI : AI 기능(키 없음, 호출 한도, 사용자별 횟수, AI 호출 실패)
+ *   앞으로 기능을 만들 때 영역을 추가한다. (예: ISSUE 번호 발급, STORE 판매점, ADMIN 관리자)
  *
  * 기능 문서의 정책 코드(OFF_TOPIC 등 AI 고정 응답)는 오류가 아니라 정상 응답의 값이라 여기에 넣지 않는다.
  */
@@ -24,6 +25,18 @@ public enum ErrorCode {
     TOO_MANY_REQUESTS("COMMON-007", HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많아요. 잠시 후 다시 시도해 주세요."),
     SERVICE_UNAVAILABLE("COMMON-008", HttpStatus.SERVICE_UNAVAILABLE, "지금은 이용할 수 없어요. 잠시 후 다시 시도해 주세요."),
     PAYLOAD_TOO_LARGE("COMMON-009", HttpStatus.PAYLOAD_TOO_LARGE, "파일이 너무 커요. 더 작은 파일로 올려 주세요."),
+    // ---- AI (사용자 문구는 기능명세서 예외처리 8·12번을 따른다. 번호 생성·통계는 AI 가 막혀도 계속 쓸 수 있다) ----
+    AI_NOT_CONFIGURED("AI-001", HttpStatus.SERVICE_UNAVAILABLE,
+            "현재 AI 기능 이용이 일시 중단되었어요. 번호 생성과 통계 조회는 계속 이용할 수 있어요."),
+    AI_DAILY_LIMIT("AI-002", HttpStatus.SERVICE_UNAVAILABLE,
+            "현재 AI 기능 이용이 일시 중단되었어요. 번호 생성과 통계 조회는 계속 이용할 수 있어요."),
+    AI_MONTHLY_COST_LIMIT("AI-003", HttpStatus.SERVICE_UNAVAILABLE,
+            "현재 AI 기능 이용이 일시 중단되었어요. 번호 생성과 통계 조회는 계속 이용할 수 있어요."),
+    AI_USER_LIMIT("AI-004", HttpStatus.TOO_MANY_REQUESTS,
+            "오늘 무료 AI 이용 횟수를 모두 사용했어요. 내일 다시 이용해 주세요. 번호 생성과 통계 조회는 계속 이용할 수 있어요."),
+    AI_CALL_FAILED("AI-005", HttpStatus.SERVICE_UNAVAILABLE,
+            "AI 응답을 불러오지 못했어요. 잠시 후 다시 시도해 주세요. 번호 생성과 기본 통계 분석은 계속 이용할 수 있어요."),
+
     INTERNAL_ERROR("COMMON-999", HttpStatus.INTERNAL_SERVER_ERROR, "일시적인 오류가 발생했어요. 잠시 후 다시 시도해 주세요.");
 
     private final String code;
