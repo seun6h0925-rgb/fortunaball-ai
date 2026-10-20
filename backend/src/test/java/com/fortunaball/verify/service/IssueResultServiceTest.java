@@ -52,7 +52,7 @@ class IssueResultServiceTest {
     private final DrawRoundRepository drawRepo = mock(DrawRoundRepository.class);
     private final WinningVerificationRepository verificationRepo = mock(WinningVerificationRepository.class);
     private final RequestRateLimiter limiter = mock(RequestRateLimiter.class);
-    private final RateLimitProperties rateProps = new RateLimitProperties(30, 20);
+    private final RateLimitProperties rateProps = new RateLimitProperties(30, 20, 30);
     private IssueResultService service;
 
     @BeforeEach
