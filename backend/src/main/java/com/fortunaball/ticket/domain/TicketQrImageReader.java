@@ -10,6 +10,8 @@ import com.google.zxing.RGBLuminanceSource;
 import com.google.zxing.common.GlobalHistogramBinarizer;
 import com.google.zxing.common.HybridBinarizer;
 
+import org.springframework.stereotype.Component;
+
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
@@ -35,6 +37,7 @@ import java.util.Optional;
  * <p>못 읽으면 예외 대신 {@code Optional.empty()} 를 돌려준다. 사진에 QR 이 없거나 흐린 것은
  * 사용자가 흔히 겪는 정상적인 경우이기 때문이다. 안내 문구는 호출하는 서비스가 정한다.</p>
  */
+@Component
 public class TicketQrImageReader {
 
     /** 이보다 픽셀이 많은 사진은 읽지 않는다. (용량은 작아도 픽셀이 엄청 큰 "압축 폭탄" 이미지 방어) */
