@@ -26,8 +26,8 @@ spring:
   servlet:
     multipart:
       # 사진 업로드(당첨 인증 등록) 한도. 기본값 1MB 는 휴대폰 사진에 너무 작아서 올린다.
-      max-file-size: ${fortuna.upload.max-size-mb}MB   # 사진 1장 한도. 아래 fortuna.upload.max-size-mb 와 같은 값을 쓴다.
-      max-request-size: 12MB                            # 사진 + 글자 칸(댓글 등)을 합친 한도. 사진 한도보다 조금 넉넉히.
+      max-file-size: 30MB     # 파일 1개 한도. 관리자 판매점 CSV(약 14MB)가 들어가야 해서 30MB. 사진 용량(fortuna.upload.max-size-mb)은 코드(UploadedImageValidator)가 따로 검사한다.
+      max-request-size: 32MB  # 요청 전체 한도. 파일 한도보다 조금 넉넉히.
   jackson:
     time-zone: Asia/Seoul
   cache:

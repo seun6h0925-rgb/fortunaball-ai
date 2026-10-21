@@ -35,3 +35,6 @@ Thumbs.db
 # ===== 업로드 파일 · 데이터 원본 =====
 uploads/
 data/raw/
+# 관리자가 올린 판매점 파일(반영 전 보관). 서버를 켠 위치 기준 data/store-uploads
+backend/data/
+data/store-uploads/

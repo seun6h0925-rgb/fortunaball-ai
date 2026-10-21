@@ -57,8 +57,8 @@ public class StoreImportService {
         return importRows(rows);
     }
 
-    /** CSV 읽기와 DB 넣기를 나눠 둔 것 (읽기는 파일 없이도 확인할 수 있게). */
-    Result importRows(List<StoreCsvRow> rows) {
+    /** CSV 읽기와 DB 넣기를 나눠 둔 것 (읽기는 파일 없이도 확인할 수 있게). 관리자 업로드 반영(API-50)도 이 메서드를 쓴다. 호출하는 쪽에 트랜잭션이 있어야 한다. */
+    public Result importRows(List<StoreCsvRow> rows) {
         int minRound = rows.stream().mapToInt(StoreCsvRow::round).min().orElseThrow();
         int maxRound = rows.stream().mapToInt(StoreCsvRow::round).max().orElseThrow();
 
