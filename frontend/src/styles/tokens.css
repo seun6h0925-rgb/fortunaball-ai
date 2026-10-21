@@ -1,0 +1,44 @@
+/* 디자인 기준값 (목업 Main / R-00). 색·글꼴·크기를 바꿀 때는 여기만 고친다. */
+:root {
+  /* 색 */
+  --bg-sky: linear-gradient(180deg, #dff1fd 0%, #9ccbf6 28%, #4f93de 62%, #1e5398 100%);
+  --card-navy: linear-gradient(160deg, #16417a 0%, #071f41 55%, #051a3a 100%);
+  --card-hero: linear-gradient(150deg, #2d66aa 0%, #0a2a57 40%, #051c3d 100%);
+  --accent: linear-gradient(90deg, #7cc8fc, #4b97ee);
+  --accent-solid: #7cc8fc;
+  --on-accent: #04204a;
+  --text: #0b1f44;
+  --text-sub: #2b466f;
+  --on-navy: #ffffff;
+  --on-navy-soft: #c9d6ec;
+  --on-navy-mute: #9fb3d6;
+  --chip-text: #ddebff;
+  --chip-bg: #071f41;
+  --line-soft: rgba(159, 179, 214, 0.22);
+  --line-card: rgba(124, 200, 252, 0.18);
+  --line-chip: rgba(124, 200, 252, 0.45);
+  --up: #ff8a8a;
+  --down: #7cc8fc;
+  --gold: #f9e597;
+  --danger: #ff8a8a;
+  --bar-bg: rgba(5, 26, 58, 0.96);
+  --nav-idle: #8fa9d3;
+
+  /* 모양 */
+  --radius-card: 22px;
+  --shadow-card: 0 8px 24px rgba(5, 26, 58, 0.3);
+  --shadow-bar: 0 8px 24px rgba(5, 26, 58, 0.35);
+
+  /* 글꼴 */
+  --font: 'Noto Sans KR', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* 움직임: 모든 버튼·이동이 같은 속도와 곡선을 쓴다 */
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --t-fast: 140ms;
+  --t-page: 220ms;
+
+  /* 배치 (모바일 기준, 넓은 화면에서 layout.css 가 덮어씀) */
+  --gutter: 20px;
+  --content-max: 1200px;
+  --bar-h: 68px;
+}

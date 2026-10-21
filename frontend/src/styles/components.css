@@ -1,0 +1,333 @@
+/* 공통 부품: 카드, 버튼, 칩, 로또볼, 안내 문구, 광고 칸, 상태 표시 */
+
+.card {
+  border-radius: var(--radius-card);
+  background: var(--card-navy);
+  box-shadow: var(--shadow-card);
+  border: 1px solid var(--line-card);
+  color: var(--on-navy);
+}
+.card--hero {
+  background: var(--card-hero);
+}
+
+.hr {
+  height: 1px;
+  background: rgba(159, 179, 214, 0.28);
+}
+.sub {
+  font-size: 13px;
+  color: var(--on-navy-mute);
+}
+.up {
+  color: var(--up);
+  font-weight: 700;
+}
+.down {
+  color: var(--down);
+  font-weight: 700;
+}
+
+/* ── 버튼 공통: 누르면 살짝 들어가고, 마우스를 올리면 살짝 밝아진다 ── */
+.btn,
+.chip,
+.icon-btn,
+.like-btn {
+  transition: transform var(--t-fast) var(--ease), filter var(--t-fast) var(--ease),
+    background-color var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease);
+}
+.btn:active:not(:disabled),
+.chip:active:not(:disabled),
+.icon-btn:active:not(:disabled),
+.like-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+@media (hover: hover) {
+  .btn:hover:not(:disabled),
+  .chip:hover:not(:disabled),
+  .like-btn:hover:not(:disabled) {
+    filter: brightness(1.12);
+  }
+}
+.btn:disabled,
+.chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.btn--cta {
+  min-height: 56px;
+  border: 0;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-size: 17px;
+}
+.btn--ghost {
+  border: 1px solid var(--line-chip);
+  background: var(--chip-bg);
+  color: var(--chip-text);
+}
+.btn--block {
+  width: 100%;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--line-chip);
+  border-radius: 999px;
+  background: var(--chip-bg);
+  color: var(--chip-text);
+  font-size: 14px;
+  white-space: nowrap;
+}
+.chip--sm {
+  min-height: 32px;
+  padding: 0 13px;
+  font-size: 13px;
+}
+.chip.is-on {
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+  border-color: transparent;
+}
+.chip-row {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.chip-row::-webkit-scrollbar {
+  display: none;
+}
+.chip-row > .chip {
+  flex: 0 0 auto;
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text);
+}
+
+/* ── 좋아요(엄지) 버튼 ── */
+.like-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line-chip);
+  border-radius: 999px;
+  background: var(--chip-bg);
+  color: var(--chip-text);
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.like-btn__today {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--on-navy-mute);
+}
+.like-btn--block {
+  flex: 1;
+}
+.like-btn--compact {
+  flex-shrink: 0;
+  min-height: 36px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+.like-btn.is-full .like-btn__today {
+  color: var(--gold);
+}
+.like-btn.pop svg {
+  animation: like-pop 360ms var(--ease);
+}
+@keyframes like-pop {
+  0% { transform: scale(1) rotate(0); }
+  40% { transform: scale(1.35) rotate(-12deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+
+/* ── 공유하기 버튼 ── */
+.share-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line-chip);
+  border-radius: 999px;
+  background: var(--chip-bg);
+  color: var(--chip-text);
+  font-size: 14px;
+  white-space: nowrap;
+  transition: transform var(--t-fast) var(--ease), filter var(--t-fast) var(--ease);
+}
+.share-btn:active {
+  transform: scale(0.97);
+}
+.share-btn--block {
+  flex: 1;
+}
+
+/* ── 로또볼: 모든 번호가 같은 색, 크기만 다르다 ── */
+.ball {
+  --s: 40px;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: var(--s);
+  height: var(--s);
+  border-radius: 50%;
+  font-size: calc(var(--s) * 0.4);
+  font-weight: 700;
+  color: var(--on-accent);
+  background-color: #9ccbf6;
+  background-image: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0) 50%);
+  box-shadow: inset -3px -4px 7px rgba(11, 31, 68, 0.25), 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.ball.is-off {
+  opacity: 0.35;
+  box-shadow: none;
+}
+
+/* ── 광고 칸(애드센스 자리): 높이를 고정해서 화면이 밀리지 않게 ── */
+.ad-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: 64px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px dashed rgba(223, 241, 253, 0.7);
+  color: #eaf3ff;
+  font-size: 13px;
+}
+.ad-slot__tag {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(5, 26, 58, 0.7);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* ── 유의사항 ── */
+.note {
+  padding: 14px 16px;
+  border-radius: 16px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #d3e2f8;
+}
+.note__title {
+  display: block;
+  margin-bottom: 4px;
+  color: #fff;
+  font-weight: 700;
+}
+
+/* ── 상태 표시: 불러오는 중, 오류, 비어 있음 ── */
+.state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 36px 20px;
+  text-align: center;
+  color: var(--on-navy-soft);
+  font-size: 14px;
+}
+.state__title {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+}
+.state__trace {
+  font-size: 12px;
+  color: var(--on-navy-mute);
+}
+.spinner {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 3px solid rgba(124, 200, 252, 0.25);
+  border-top-color: #7cc8fc;
+  animation: spin 800ms linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.skeleton {
+  border-radius: 12px;
+  background: linear-gradient(90deg, rgba(124, 200, 252, 0.1), rgba(124, 200, 252, 0.22), rgba(124, 200, 252, 0.1));
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+@keyframes shimmer {
+  to { background-position: -200% 0; }
+}
+
+/* ── 알림(토스트) ── */
+.toast-wrap {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--bar-h) + 40px);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(92vw, 420px);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.toast {
+  width: 100%;
+  padding: 13px 18px;
+  border-radius: 16px;
+  background: rgba(5, 26, 58, 0.97);
+  border: 1px solid var(--line-chip);
+  box-shadow: var(--shadow-bar);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+  animation: toast-in var(--t-page) var(--ease);
+}
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@media (min-width: 1024px) {
+  .toast-wrap { bottom: 40px; }
+}

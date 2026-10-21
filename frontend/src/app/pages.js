@@ -1,0 +1,21 @@
+// 화면 주소와 이름 목록 (목업 UI 번호 기준). 화면을 새로 만들면 App.jsx 의 Route 로 옮긴다.
+export const PAGES = [
+  { path: '/', title: '홈', ui: 'UI-01' },
+  { path: '/generate', title: '통계 번호 생성', ui: 'UI-02' },
+  { path: '/generate/patterns', title: '패턴 모아보기', ui: 'UI-02B' },
+  { path: '/generate/result', title: '번호 생성 결과', ui: 'UI-03' },
+  { path: '/generate/issued', title: '번호 발급 완료', ui: 'UI-03B' },
+  { path: '/issues', title: '발급 내역 조회', ui: 'UI-04' },
+  { path: '/analyst', title: 'AI 로또 애널리스트', ui: 'UI-05' },
+  { path: '/dream', title: 'AI 로또 꿈풀이', ui: 'UI-06' },
+  { path: '/stats', title: '로또 데이터 통계 분석', ui: 'UI-07' },
+  { path: '/draws', title: '회차별 당첨번호', ui: 'UI-08' },
+  { path: '/winners', title: '우리 서비스 당첨 기록', ui: 'UI-09' },
+  { path: '/verify', title: '익명 당첨 인증 등록', ui: 'UI-10' },
+  { path: '/map', title: '로또 명당 지도', ui: 'UI-11' },
+  { path: '/payout', title: '당첨금 · 세금 · 실수령액', ui: 'UI-12' },
+  { path: '/guide/payout', title: '당첨금 수령 가이드', ui: 'UI-13' },
+  { path: '/about', title: '서비스 안내 · 유의사항', ui: 'UI-14' },
+  { path: '/notices', title: '공지사항', ui: 'UI-15' },
+  { path: '/notices/:id', title: '공지 상세', ui: 'UI-15B' },
+]
