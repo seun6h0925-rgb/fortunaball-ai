@@ -13,4 +13,7 @@ public interface ContentPageRepository extends JpaRepository<ContentPage, Long> 
 
     /** 페이지 종류와 공개 여부로 한 건 조회. 없거나 숨김이면 비어 있다. */
     Optional<ContentPage> findByPageTypeAndVisibleTrue(String pageType);
+
+    /** 관리자용: 숨김 여부와 상관없이 페이지 종류로 한 건 조회 (API-58, 59) */
+    Optional<ContentPage> findByPageType(String pageType);
 }

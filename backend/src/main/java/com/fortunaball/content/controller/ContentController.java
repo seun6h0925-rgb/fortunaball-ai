@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * ⚠ 헷갈리기 쉬운 점
  *  - 로그인·게스트 식별값이 필요 없는 공개 API 다.
- *  - 글 수정 API(API-58, 59)는 관리자 로그인을 만든 뒤에 추가한다.
+ *  - 글 목록·수정(API-58, 59)은 관리자용이라 AdminContentController 에 있다.
  *  - 컨트롤러는 받아서 서비스에 넘기고 공통 응답으로 감싸기만 한다.
  */
 @RestController
