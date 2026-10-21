@@ -100,6 +100,44 @@ public class StatSnapshotService {
         }
     }
 
+    /**
+     * 한 회차의 통계를 지금 저장된 회차 데이터로 다시 계산한다. (관리자 재계산, API-47)
+     * 기준 회차(basis)는 그대로 두고 패턴 카드만 새로 만든다. 상태(확정·대기·사전분석)도 바꾸지 않는다.
+     * @return 통계가 없으면 empty
+     */
+    @Transactional
+    public Optional<StatRoundSnapshot> recalculate(int targetRound, LocalDateTime now) {
+        Optional<StatRoundSnapshot> found = snapshotRepo.findByTargetRoundNo(targetRound);
+        if (found.isEmpty()) {
+            return Optional.empty();
+        }
+        StatRoundSnapshot snap = found.get();
+        rebuildCards(snap, now);
+        return Optional.of(snapshotRepo.save(snap));
+    }
+
+    /**
+     * fromRound 회차 데이터가 바뀌었을 때, 그 회차를 기준 기간에 포함하는 통계를 모두 다시 계산한다.
+     * @return 다시 계산한 통계 수
+     */
+    @Transactional
+    public int recalculateAffectedBy(int fromRound, LocalDateTime now) {
+        List<StatRoundSnapshot> affected = snapshotRepo
+                .findByBasisRoundNoBetweenOrderByTargetRoundNoAsc(fromRound, fromRound + HISTORY_SIZE);
+        for (StatRoundSnapshot snap : affected) {
+            rebuildCards(snap, now);
+            snapshotRepo.save(snap);
+        }
+        return affected.size();
+    }
+
+    private void rebuildCards(StatRoundSnapshot snap, LocalDateTime now) {
+        List<DrawNumbers> history = loadHistory(snap.getBasisRoundNo());
+        snap.rebuild(snap.getBasisRoundNo(), now);
+        cardRepo.deleteBySnapshotId(snap.getId());
+        cardRepo.saveAll(buildCards(snap.getId(), history));
+    }
+
     private void ensureSnapshot(int target, int basis, SnapshotStatus want,
                                 List<DrawNumbers> history, LocalDateTime now) {
         Optional<StatRoundSnapshot> found = snapshotRepo.findByTargetRoundNo(target);

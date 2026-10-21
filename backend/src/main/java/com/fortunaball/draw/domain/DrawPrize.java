@@ -43,6 +43,12 @@ public class DrawPrize {
         this.winnerCount = winnerCount;
     }
 
+    /** 공식 사이트에서 다시 받은 당첨금·당첨자 수로 덮어쓴다. (관리자 재수집용) */
+    public void applyOfficial(DrawPrize fresh) {
+        this.prizeAmount = fresh.prizeAmount;
+        this.winnerCount = fresh.winnerCount;
+    }
+
     public Long getId() { return id; }
     public int getRoundNo() { return roundNo; }
     public int getWinningRank() { return winningRank; }

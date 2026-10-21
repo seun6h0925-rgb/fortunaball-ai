@@ -83,6 +83,19 @@ public class DrawRound {
         this.dataSource = dataSource;
     }
 
+    /** 공식 사이트에서 다시 받은 값으로 덮어쓴다. (관리자 재수집용. 새 객체는 생성자에서 이미 검증됨) */
+    public void applyOfficial(DrawRound fresh) {
+        this.drawDate = fresh.drawDate;
+        this.number1 = fresh.number1;
+        this.number2 = fresh.number2;
+        this.number3 = fresh.number3;
+        this.number4 = fresh.number4;
+        this.number5 = fresh.number5;
+        this.number6 = fresh.number6;
+        this.bonusNumber = fresh.bonusNumber;
+        this.dataSource = fresh.dataSource;
+    }
+
     private static void checkRange(int n) {
         if (n < 1 || n > 45) {
             throw new IllegalArgumentException("번호는 1~45 여야 합니다: " + n);
