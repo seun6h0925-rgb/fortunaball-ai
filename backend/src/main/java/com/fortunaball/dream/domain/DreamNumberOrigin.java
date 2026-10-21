@@ -7,7 +7,7 @@ package com.fortunaball.dream.domain;
  *  SMORFIA     나폴리 스모르피아 전통 번호 (1~45만 사용)
  *  CHARADA     쿠바 차라다 전통 번호 (1~45만 사용)
  *  SERVICE     서비스 내부 참고 매핑
- *  STAT        번호가 모자랄 때 사용자가 동의해서 통계(최근 100회 출현 빈도)로 보완한 번호
+ *  STAT        꿈 번호가 6개보다 모자라서 번호 생성 기능이 통계로 채운 번호 (다시 생성하면 이 번호만 바뀐다)
  *
  * 앞의 SMORFIA / CHARADA / SERVICE 는 DB dream_symbol_number.number_origin 값과 같다.
  */

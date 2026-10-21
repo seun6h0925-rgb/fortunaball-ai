@@ -47,9 +47,18 @@ class DreamSymbolMatcherTest {
     }
 
     @Test
-    void 최대_세_개까지만_쓴다() {
-        List<MatchedSymbol> r = matcher.match("돼지와 용꿈 그리고 이가 빠짐 그리고 맑은 물", ENTRIES);
-        assertEquals(DreamSymbolMatcher.MAX_SYMBOLS, r.size());
+    void 상징_개수에는_제한이_없다() {
+        List<SymbolEntry> many = new java.util.ArrayList<>(ENTRIES);
+        many.add(new SymbolEntry(7, "거미", List.of()));
+        many.add(new SymbolEntry(8, "나비", List.of()));
+        many.add(new SymbolEntry(9, "개구리", List.of()));
+        many.add(new SymbolEntry(10, "도마뱀", List.of()));
+
+        List<MatchedSymbol> r = matcher.match(
+                "돼지와 용꿈 그리고 이가 빠짐 그리고 맑은 물 그리고 거미 그리고 나비 그리고 개구리 그리고 도마뱀", many);
+
+        assertEquals(List.of("돼지", "용", "이빨", "물", "거미", "나비", "개구리", "도마뱀"),
+                r.stream().map(MatchedSymbol::keyword).toList());
     }
 
     @Test

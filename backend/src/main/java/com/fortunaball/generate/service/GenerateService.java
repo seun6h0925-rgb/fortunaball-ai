@@ -30,6 +30,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -91,7 +92,7 @@ public class GenerateService {
         // 1) 입력 검사
         int gameCount = validateGameCount(request == null ? null : request.gameCount());
         PatternCode code = parsePatternCode(request == null ? null : request.patternCode());
-        return generateInternal(guest, gameCount, code, Set.of(), Set.of());
+        return generateInternal(guest, gameCount, code, Set.of(), Set.of(), null);
     }
 
     /**
@@ -107,11 +108,28 @@ public class GenerateService {
         Set<Integer> in = include == null ? Set.of() : include;
         Set<Integer> out = exclude == null ? Set.of() : exclude;
         validateNumberChoices(in, out, count);
-        return generateInternal(guest, count, null, in, out);
+        return generateInternal(guest, count, null, in, out, null);
     }
 
+    /**
+     * AI 꿈풀이용: 게임마다 "이 번호는 꼭 포함"을 따로 정해 여러 게임을 한 번에 만든다.
+     * (꿈 상징 번호가 6개를 넘어 여러 게임에 나눠 담을 때 쓴다. 나머지 자리는 통계로 채운다)
+     * 게임 수는 includePerGame 의 크기이고, 대상 회차·통계 기준·"이미 3번 찬 조합 제외"·임시 보관(확정 토큰)은 일반 번호 생성과 똑같다.
+     * 한 번의 호출로 보관소에 한 묶음만 쌓이므로 확정 토큰도 하나다. (게임끼리 같은 조합이 나오지 않게 서로 제외한다)
+     */
+    @Transactional(readOnly = true)
+    public GenerateResponse generateEachWithNumbers(GuestToken guest, List<Set<Integer>> includePerGame) {
+        int count = validateGameCount(includePerGame == null ? null : includePerGame.size());
+        for (Set<Integer> include : includePerGame) {
+            validateNumberChoices(include, Set.of(), 1);
+        }
+        return generateInternal(guest, count, null, Set.of(), Set.of(), includePerGame);
+    }
+
+    /** @param includePerGame 게임마다 따로 포함할 번호. null 이면 모든 게임에 같은 조건(include, exclude)을 쓴다. */
     private GenerateResponse generateInternal(GuestToken guest, int gameCount, PatternCode code,
-                                              Set<Integer> include, Set<Integer> exclude) {
+                                              Set<Integer> include, Set<Integer> exclude,
+                                              List<Set<Integer>> includePerGame) {
         // 2) 대상 회차는 서버가 계산한다
         ZonedDateTime now = ZonedDateTime.now(RoundPolicy.ZONE);
         int targetRound = roundPolicy.targetRound(now);
@@ -132,7 +150,9 @@ public class GenerateService {
         Set<String> excluded = new HashSet<>(comboCountRepo.findKeysAtLimit(targetRound, props.maxIssuePerCombo()));
 
         // 6) 생성 → 보관
-        List<Combo> games = runGenerator(condition, gameCount, profile, excluded, code, targetRound);
+        List<Combo> games = includePerGame == null
+                ? runGenerator(condition, gameCount, profile, excluded, code, targetRound)
+                : runEach(includePerGame, profile, excluded, targetRound);
         GenerationTicket ticket = store.issue(guest.value(), targetRound, basisRound, code, games);
         log.info("[번호생성] guest={} 대상회차={} 기준회차={} 게임수={} 패턴={}",
                 guest, targetRound, basisRound, gameCount, code);
@@ -147,6 +167,19 @@ public class GenerateService {
                 targetRound,
                 drawDate,
                 basisRound);
+    }
+
+    /** 게임마다 포함 번호를 달리해 한 게임씩 만든다. 앞에서 만든 조합은 뒤 게임에서 제외한다. */
+    private List<Combo> runEach(List<Set<Integer>> includePerGame, DrawProfile profile, Set<String> excluded,
+                                int targetRound) {
+        Set<String> used = new HashSet<>(excluded);
+        List<Combo> games = new ArrayList<>();
+        for (Set<Integer> include : includePerGame) {
+            Combo one = runGenerator(PatternCondition.withNumbers(include, Set.of()), 1, profile, used, null, targetRound).get(0);
+            used.add(one.key());
+            games.add(one);
+        }
+        return games;
     }
 
     /**

@@ -16,15 +16,12 @@ import org.springframework.stereotype.Component;
  *  2) 1글자 단어(용, 뱀, 말, 개, 불, 물, 돈 …)는 "말하다", "새로운", "소리"처럼 다른 낱말의 일부로 자주 나오므로
  *     바로 앞이 한글이 아니고, 바로 뒤가 끝이거나 한글이 아니거나 조사(이·가·을·를·은·는·의·에·도·와·과·랑·만·꿈)일 때만 일치로 본다.
  *     (조사 '로'는 "새로운"을 잡아내므로 뺐다.)
- *  3) 같은 상징은 한 번만 세고, 꿈에 먼저 나온 순서로 최대 MAX_SYMBOLS 개까지 쓴다.
+ *  3) 같은 상징은 한 번만 세고, 꿈에 먼저 나온 순서로 모두 돌려준다. (개수 제한 없음: 상징 번호가 6개를 넘으면 DreamService 가 사용자에게 어떻게 할지 묻는다)
  *
  * ⚠ 한계: "말이 안 돼", "아기자기" 같은 문장은 오인식할 수 있다. 오인식은 관리자 화면에서 별칭을 다듬어 줄인다.
  */
 @Component
 public class DreamSymbolMatcher {
-
-    /** 한 번에 해석할 최대 상징 수. 상징마다 번호가 4개 안팎이라 3개면 번호 6개가 충분히 채워진다. */
-    static final int MAX_SYMBOLS = 3;
 
     private static final Set<Character> PARTICLES = Set.of('이', '가', '을', '를', '은', '는', '의', '에', '도', '와', '과', '랑', '만', '꿈');
 
@@ -53,9 +50,6 @@ public class DreamSymbolMatcher {
         hits.sort(Comparator.comparingInt(Hit::index));
         List<MatchedSymbol> result = new ArrayList<>();
         for (Hit hit : hits) {
-            if (result.size() >= MAX_SYMBOLS) {
-                break;
-            }
             result.add(new MatchedSymbol(hit.id(), hit.keyword()));
         }
         return result;
