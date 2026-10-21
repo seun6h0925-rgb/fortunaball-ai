@@ -19,7 +19,8 @@ public class AnalystAnswerGuard {
                     + "|구매\\s*(하세요|해보세요|해 보세요|를 권)|사세요|사보세요|사 보세요");
 
     static final String TAIL = " 통계를 바탕으로 AI가 분석한 내용이지만 당첨을 보장할 수는 없어요.";
-    static final String NO_EVIDENCE_FALLBACK = "답변을 만들지 못했어요. 질문을 조금 바꿔서 다시 물어봐 주세요.";
+    static final String NO_EVIDENCE_FALLBACK = "답변을 만들지 못했어요. 죄송하지만 질문을 조금 바꿔서 다시 물어봐 주시겠어요?";
+    static final String REFUND_NOTE = " 이번 질문은 횟수에서 빼지 않았어요.";
 
     /** AI 문장이 쓸 만하면 그대로, 아니면 근거로 만든 대체 문장. evidence 가 없으면(조회 없이 답한 경우) 다시 물어보라는 안내 */
     public String sanitize(String aiText, AnalystEvidence evidence) {

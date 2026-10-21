@@ -23,6 +23,7 @@ import com.fortunaball.ai.policy.AiPolicyEngine;
 import com.fortunaball.ai.usage.AiFeature;
 import com.fortunaball.ai.usage.AiUsageSnapshot;
 import com.fortunaball.analyst.domain.AnalystEvidence;
+import com.fortunaball.analyst.domain.AskContext;
 import com.fortunaball.analyst.domain.ChatTurn;
 import com.fortunaball.analyst.domain.EvidenceItem;
 import com.fortunaball.analyst.domain.QuestionType;
@@ -92,7 +93,7 @@ class AnalystServiceTest {
     }
 
     private void agentReturns(Outcome outcome, String text, List<ToolResult> results, GenerateResponse generated) {
-        when(agent.run(any(), any(), anyString(), any(), anyString())).thenReturn(new Result(outcome, text, results, generated));
+        when(agent.run(any(), any(), anyString(), any(), anyString(), any())).thenReturn(new Result(outcome, text, results, generated));
     }
 
     private void invalid(AnalystRequest request) {
@@ -152,7 +153,7 @@ class AnalystServiceTest {
 
         service.answer(new AnalystRequest("그럼 그걸로 해줘", null, null, null, history), GUEST, IP);
 
-        verify(agent).run(any(), any(), eq("그럼 그걸로 해줘"), any(), anyString());
+        verify(agent).run(any(), any(), eq("그럼 그걸로 해줘"), any(), anyString(), any());
     }
 
     @Test
@@ -176,7 +177,7 @@ class AnalystServiceTest {
 
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<ChatTurn>> captor = ArgumentCaptor.forClass(List.class);
-        verify(agent).run(any(), captor.capture(), anyString(), any(), anyString());
+        verify(agent).run(any(), captor.capture(), anyString(), any(), anyString(), any());
         assertEquals(6, captor.getValue().size());
         assertEquals("대화4", captor.getValue().get(0).content());
     }
@@ -315,14 +316,34 @@ class AnalystServiceTest {
         AnalystResponse r = service.answer(ask("로또 통계 알려줘"), GUEST, IP);
         verify(session).refund();
         assertTrue(r.answer().contains("다시 물어봐"));
+        assertTrue(r.answer().contains("횟수에서 빼지 않았어요"));   // 환불했으니 그렇게 안내한다
         assertFalse(r.charged());
     }
 
     @Test
-    void 지도_질문은_판매점_준비중_고정_응답() {
-        AnalystResponse r = service.answer(new AnalystRequest("근처 판매점 알려줘", "MAP", 37.5, 127.0, null), GUEST, IP);
-        assertEquals("MAP_DATA_PENDING", r.policyCode());
-        verify(gateway, never()).open(any(), anyString(), anyString());
+    void 지도_질문은_AI에게_넘기고_지도_화면과_위치_유무를_함께_전달한다() {
+        agentReturns(Outcome.ANSWER, "강남구 판매점이에요.", List.of(), null);
+
+        service.answer(new AnalystRequest("근처 판매점 알려줘", "MAP", 37.5, 127.0, null), GUEST, IP);
+
+        ArgumentCaptor<AskContext> captor = ArgumentCaptor.forClass(AskContext.class);
+        verify(agent).run(any(), any(), anyString(), any(), anyString(), captor.capture());
+        assertTrue(captor.getValue().map());
+        assertTrue(captor.getValue().hasLocation());
+        assertEquals("Location[hidden]", captor.getValue().location().toString());   // 로그에 찍혀도 좌표가 나오지 않는다
+        verify(gateway).open(any(AiFeature.class), anyString(), anyString());
+    }
+
+    @Test
+    void 위치_없이_온_일반_질문은_위치_없는_상태로_전달한다() {
+        agentReturns(Outcome.ANSWER, "답", List.of(), null);
+
+        service.answer(ask("로또 통계 알려줘"), GUEST, IP);
+
+        ArgumentCaptor<AskContext> captor = ArgumentCaptor.forClass(AskContext.class);
+        verify(agent).run(any(), any(), anyString(), any(), anyString(), captor.capture());
+        assertFalse(captor.getValue().map());
+        assertFalse(captor.getValue().hasLocation());
     }
 
     // ------------------------------------------------------------------ 입력 검사

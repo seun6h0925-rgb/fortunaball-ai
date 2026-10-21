@@ -80,14 +80,14 @@ class AnalystAgentTest {
         assertEquals(Outcome.ANSWER, r.outcome());
         assertEquals("안녕하세요!", r.text());
         verify(session, times(1)).call(any(AiRequest.class));
-        verify(tools, never()).run(any(), any(), any(), any());
+        verify(tools, never()).run(any(), any(), any(), any(), any());
     }
 
     @Test
     void 조회_후_결과를_보고_답한다() {
         script("{\"action\":\"tools\",\"calls\":[{\"name\":\"round_info\",\"args\":{\"roundNo\":1000}}]}",
                 "{\"action\":\"answer\",\"text\":\"1000회는 이래요\"}");
-        when(tools.run(eq("round_info"), any(), eq(GUEST), eq("ip"))).thenReturn(okResult("round_info"));
+        when(tools.run(eq("round_info"), any(), eq(GUEST), eq("ip"), any())).thenReturn(okResult("round_info"));
 
         Result r = run();
 
@@ -100,7 +100,7 @@ class AnalystAgentTest {
     void 두번째_호출의_프롬프트에_조회_결과가_들어간다() {
         script("{\"action\":\"tools\",\"calls\":[{\"name\":\"round_info\",\"args\":{}}]}",
                 "{\"action\":\"answer\",\"text\":\"끝\"}");
-        when(tools.run(any(), any(), any(), any())).thenReturn(okResult("round_info"));
+        when(tools.run(any(), any(), any(), any(), any())).thenReturn(okResult("round_info"));
 
         run();
 
@@ -114,8 +114,8 @@ class AnalystAgentTest {
         script("{\"action\":\"tools\",\"calls\":[{\"name\":\"round_info\",\"args\":{\"roundNo\":1000}}]}",
                 "{\"action\":\"tools\",\"calls\":[{\"name\":\"generate_numbers\",\"args\":{\"include\":[7]}}]}",
                 "{\"action\":\"answer\",\"text\":\"만들었어요\"}");
-        when(tools.run(eq("round_info"), any(), any(), any())).thenReturn(okResult("round_info"));
-        when(tools.run(eq("generate_numbers"), any(), any(), any()))
+        when(tools.run(eq("round_info"), any(), any(), any(), any())).thenReturn(okResult("round_info"));
+        when(tools.run(eq("generate_numbers"), any(), any(), any(), any()))
                 .thenReturn(new ToolResult("generate_numbers", okResult("x").evidence(), null, generated()));
 
         Result r = run();
@@ -130,12 +130,12 @@ class AnalystAgentTest {
         script("{\"action\":\"tools\",\"calls\":[{\"name\":\"generate_numbers\",\"args\":{}}]}",
                 "{\"action\":\"tools\",\"calls\":[{\"name\":\"generate_numbers\",\"args\":{}}]}",
                 "{\"action\":\"answer\",\"text\":\"정리\"}");
-        when(tools.run(eq("generate_numbers"), any(), any(), any()))
+        when(tools.run(eq("generate_numbers"), any(), any(), any(), any()))
                 .thenReturn(new ToolResult("generate_numbers", okResult("x").evidence(), null, generated()));
 
         Result r = run();
 
-        verify(tools, times(1)).run(eq("generate_numbers"), any(), any(), any());   // 두 번째는 서버가 막음
+        verify(tools, times(1)).run(eq("generate_numbers"), any(), any(), any(), any());   // 두 번째는 서버가 막음
         assertEquals(Outcome.ANSWER, r.outcome());
         assertEquals(2, r.toolResults().size());
         assertTrue(r.toolResults().get(1).error() != null);
@@ -145,9 +145,9 @@ class AnalystAgentTest {
     void 한_번에_조회는_3개까지만() {
         script("{\"action\":\"tools\",\"calls\":[{\"name\":\"a\"},{\"name\":\"b\"},{\"name\":\"c\"},{\"name\":\"d\"}]}",
                 "{\"action\":\"answer\",\"text\":\"끝\"}");
-        when(tools.run(any(), any(), any(), any())).thenReturn(okResult("x"));
+        when(tools.run(any(), any(), any(), any(), any())).thenReturn(okResult("x"));
         run();
-        verify(tools, times(3)).run(any(), any(), any(), any());
+        verify(tools, times(3)).run(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -199,12 +199,12 @@ class AnalystAgentTest {
     @Test
     void 계속_조회만_고르면_4번에서_멈추고_포기() {
         script("{\"action\":\"tools\",\"calls\":[{\"name\":\"round_info\",\"args\":{}}]}");
-        when(tools.run(any(), any(), any(), any())).thenReturn(okResult("round_info"));
+        when(tools.run(any(), any(), any(), any(), any())).thenReturn(okResult("round_info"));
 
         Result r = run();
 
         assertEquals(Outcome.GAVE_UP, r.outcome());
         verify(session, times(AnalystAgent.MAX_STEPS)).call(any(AiRequest.class));
-        verify(tools, times(AnalystAgent.MAX_STEPS - 1)).run(any(), any(), any(), any());   // 마지막 단계의 조회는 실행하지 않는다
+        verify(tools, times(AnalystAgent.MAX_STEPS - 1)).run(any(), any(), any(), any(), any());   // 마지막 단계의 조회는 실행하지 않는다
     }
 }

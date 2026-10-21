@@ -18,6 +18,7 @@ import static org.mockito.Mockito.when;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fortunaball.analyst.domain.AnalystEvidence;
+import com.fortunaball.analyst.domain.AskContext;
 import com.fortunaball.analyst.domain.EvidenceItem;
 import com.fortunaball.analyst.domain.QuestionType;
 import com.fortunaball.analyst.service.AnalystTools.ToolResult;
@@ -34,6 +35,10 @@ import com.fortunaball.generate.service.GenerateService;
 import com.fortunaball.stat.domain.StatPeriod;
 import com.fortunaball.stat.dto.NumberStatResponse;
 import com.fortunaball.stat.service.StatAnalysisService;
+import com.fortunaball.store.dto.StoreItem;
+import com.fortunaball.store.service.StoreQueryService;
+import com.fortunaball.store.service.StoreQueryService.AiSort;
+import com.fortunaball.store.service.StoreQueryService.AiStoreResult;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -57,6 +62,7 @@ class AnalystToolsTest {
     private DrawRoundRepository roundRepository;
     private DrawPrizeRepository prizeRepository;
     private StatAnalysisService statService;
+    private StoreQueryService storeService;
     private AnalystTools tools;
 
     @BeforeEach
@@ -67,7 +73,9 @@ class AnalystToolsTest {
         roundRepository = mock(DrawRoundRepository.class);
         prizeRepository = mock(DrawPrizeRepository.class);
         statService = mock(StatAnalysisService.class);
-        tools = new AnalystTools(evidenceService, generateService, drawService, roundRepository, prizeRepository, statService);
+        storeService = mock(StoreQueryService.class);
+        tools = new AnalystTools(evidenceService, generateService, drawService, roundRepository, prizeRepository, statService,
+                storeService, new AnalystStoreEvidence());
     }
 
     private JsonNode args(String text) throws Exception {
@@ -282,5 +290,129 @@ class AnalystToolsTest {
         assertFalse(r.isOk());
         assertTrue(r.error().contains("알 수 없는"));
         assertFalse(tools.run(null, null, GUEST, "ip").isOk());
+    }
+
+    // ------------------------------------------------------------------ 판매점 도구
+
+    private static StoreItem store(long id, String name, Integer distance) {
+        return new StoreItem(id, name, "서울 강남구 테헤란로 " + id, "", "서울", "강남구", 37.5001, 127.0001,
+                2, 1, 0, 3, 4, 7, 1, 0, true, distance);
+    }
+
+    private static AiStoreResult storeResult(List<StoreItem> items, Long total) {
+        return new AiStoreResult(items, total, LocalDate.of(2026, 10, 17), 262, 12, 1, 5);
+    }
+
+    @Test
+    void store_search_는_지역과_정렬을_서비스에_넘기고_근거를_만든다() throws Exception {
+        when(storeService.searchForAi("서울", "강남구", null, AiSort.TOTAL, false, null))
+                .thenReturn(storeResult(List.of(store(1, "행운복권", null)), 120L));
+
+        ToolResult r = tools.run("store_search", args("{\"sido\":\"서울\",\"sigungu\":\"강남구\"}"), GUEST, "ip");
+
+        assertTrue(r.isOk());
+        assertEquals(QuestionType.MAP_STORE, r.evidence().type());
+        assertTrue(r.evidence().basis().contains("서울 강남구"));
+        assertTrue(r.evidence().items().get(0).label().contains("행운복권"));
+    }
+
+    @Test
+    void 루키_명당만_원하면_최근_당첨_정렬로_바꿔_부른다() throws Exception {
+        when(storeService.searchForAi(null, null, null, AiSort.RECENT, true, 3))
+                .thenReturn(storeResult(List.of(store(1, "행운복권", null)), null));
+
+        ToolResult r = tools.run("store_search", args("{\"rookieOnly\":true,\"limit\":3}"), GUEST, "ip");
+
+        assertTrue(r.isOk());
+        verify(storeService).searchForAi(null, null, null, AiSort.RECENT, true, 3);
+    }
+
+    @Test
+    void sort_recent_는_최근_당첨_정렬이다() throws Exception {
+        when(storeService.searchForAi("경기", null, null, AiSort.RECENT, false, null))
+                .thenReturn(storeResult(List.of(store(1, "행운복권", null)), null));
+
+        assertTrue(tools.run("store_search", args("{\"sido\":\"경기\",\"sort\":\"recent\"}"), GUEST, "ip").isOk());
+    }
+
+    @Test
+    void sort_first_는_1등_많은_순이다() throws Exception {
+        when(storeService.searchForAi("서울", "강남구", null, AiSort.FIRST, false, null))
+                .thenReturn(storeResult(List.of(store(1, "행운복권", null)), null));
+
+        ToolResult r = tools.run("store_search", args("{\"sido\":\"서울\",\"sigungu\":\"강남구\",\"sort\":\"first\"}"), GUEST, "ip");
+
+        assertTrue(r.isOk());
+        assertTrue(r.evidence().basis().contains("1등 많은 순"));
+    }
+
+    @Test
+    void 조건에_맞는_판매점이_없으면_AI가_읽을_안내를_돌려준다() throws Exception {
+        when(storeService.searchForAi("서울", "없는구", null, AiSort.TOTAL, false, null))
+                .thenReturn(storeResult(List.of(), 0L));
+
+        ToolResult r = tools.run("store_search", args("{\"sido\":\"서울\",\"sigungu\":\"없는구\"}"), GUEST, "ip");
+
+        assertFalse(r.isOk());
+        assertTrue(r.error().contains("찾지 못했어요"));
+    }
+
+    @Test
+    void 검색어가_짧으면_서비스_오류_메시지가_AI에게_전해진다() throws Exception {
+        when(storeService.searchForAi(null, null, "가", AiSort.TOTAL, false, null))
+                .thenThrow(new BusinessException(ErrorCode.INVALID_INPUT, "검색어는 2글자 이상 50글자 이하로 써야 해요.", "keyword 길이 오류"));
+
+        ToolResult r = tools.run("store_search", args("{\"keyword\":\"가\"}"), GUEST, "ip");
+
+        assertFalse(r.isOk());
+        assertTrue(r.error().contains("2글자"));
+    }
+
+    @Test
+    void 위치가_없으면_내_주변은_조회하지_않는다() throws Exception {
+        ToolResult r = tools.run("store_nearby", args("{}"), GUEST, "ip", AskContext.NONE);
+
+        assertFalse(r.isOk());
+        assertTrue(r.error().contains("위치"));
+        verify(storeService, never()).nearbyForAi(org.mockito.ArgumentMatchers.anyDouble(),
+                org.mockito.ArgumentMatchers.anyDouble(), anyInt(), any());
+    }
+
+    @Test
+    void 위치가_있으면_서버가_가진_좌표로_조회하고_좌표는_근거에_없다() throws Exception {
+        AskContext ctx = new AskContext(true, new AskContext.Location(37.5001, 127.0001));
+        when(storeService.nearbyForAi(37.5001, 127.0001, 500, null))
+                .thenReturn(storeResult(List.of(store(1, "행운복권", 230)), 8L));
+
+        ToolResult r = tools.run("store_nearby", args("{}"), GUEST, "ip", ctx);
+
+        assertTrue(r.isOk());
+        String prompt = r.toPromptText();
+        assertTrue(prompt.contains("230m"));
+        assertFalse(prompt.contains("37.50"));    // 위도·경도는 AI 에게 가지 않는다
+        assertFalse(prompt.contains("127.00"));
+    }
+
+    @Test
+    void 허용되지_않는_반경은_서비스_오류가_AI에게_전해진다() throws Exception {
+        AskContext ctx = new AskContext(true, new AskContext.Location(37.5, 127.0));
+        when(storeService.nearbyForAi(37.5, 127.0, 400, null))
+                .thenThrow(new BusinessException(ErrorCode.INVALID_INPUT, "반경은 300m, 500m, 1km 중에서 골라 주세요.", "radius=400"));
+
+        ToolResult r = tools.run("store_nearby", args("{\"radius\":400}"), GUEST, "ip", ctx);
+
+        assertFalse(r.isOk());
+        assertTrue(r.error().contains("반경"));
+    }
+
+    @Test
+    void 반경_안에_판매점이_없으면_넓혀_보라고_안내한다() throws Exception {
+        AskContext ctx = new AskContext(true, new AskContext.Location(37.5, 127.0));
+        when(storeService.nearbyForAi(37.5, 127.0, 300, null)).thenReturn(storeResult(List.of(), 0L));
+
+        ToolResult r = tools.run("store_nearby", args("{\"radius\":300}"), GUEST, "ip", ctx);
+
+        assertFalse(r.isOk());
+        assertTrue(r.error().contains("반경 300m"));
     }
 }

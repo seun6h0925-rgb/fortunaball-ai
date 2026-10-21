@@ -2,6 +2,7 @@ package com.fortunaball.analyst.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fortunaball.analyst.domain.AnalystEvidence;
+import com.fortunaball.analyst.domain.AskContext;
 import com.fortunaball.analyst.domain.EvidenceItem;
 import com.fortunaball.analyst.domain.QuestionType;
 import com.fortunaball.common.exception.BusinessException;
@@ -16,6 +17,9 @@ import com.fortunaball.generate.service.GenerateService;
 import com.fortunaball.stat.domain.StatPeriod;
 import com.fortunaball.stat.dto.NumberStatResponse;
 import com.fortunaball.stat.service.StatAnalysisService;
+import com.fortunaball.store.service.StoreQueryService;
+import com.fortunaball.store.service.StoreQueryService.AiSort;
+import com.fortunaball.store.service.StoreQueryService.AiStoreResult;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -44,6 +48,8 @@ public class AnalystTools {
     public static final String ANALYZE_NUMBERS = "analyze_numbers";
     public static final String ANALYZE_ISSUE = "analyze_issue";
     public static final String GENERATE_NUMBERS = "generate_numbers";
+    public static final String STORE_SEARCH = "store_search";
+    public static final String STORE_NEARBY = "store_nearby";
 
     static final int MAX_RANKING = 10;
     static final int MAX_NUMBERS = 10;
@@ -78,19 +84,29 @@ public class AnalystTools {
     private final DrawRoundRepository roundRepository;
     private final DrawPrizeRepository prizeRepository;
     private final StatAnalysisService statService;
+    private final StoreQueryService storeService;
+    private final AnalystStoreEvidence storeEvidence;
 
     public AnalystTools(AnalystEvidenceService evidenceService, GenerateService generateService,
                         DrawQueryService drawService, DrawRoundRepository roundRepository,
-                        DrawPrizeRepository prizeRepository, StatAnalysisService statService) {
+                        DrawPrizeRepository prizeRepository, StatAnalysisService statService,
+                        StoreQueryService storeService, AnalystStoreEvidence storeEvidence) {
         this.evidenceService = evidenceService;
         this.generateService = generateService;
         this.drawService = drawService;
         this.roundRepository = roundRepository;
         this.prizeRepository = prizeRepository;
         this.statService = statService;
+        this.storeService = storeService;
+        this.storeEvidence = storeEvidence;
     }
 
+    /** 위치·화면 정보가 필요 없는 도구만 쓸 때 (내 주변 조회는 위치가 없다고 답한다) */
     public ToolResult run(String name, JsonNode args, GuestToken guest, String clientIp) {
+        return run(name, args, guest, clientIp, AskContext.NONE);
+    }
+
+    public ToolResult run(String name, JsonNode args, GuestToken guest, String clientIp, AskContext ctx) {
         JsonNode a = args == null || args.isNull() ? com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode() : args;
         try {
             return switch (name == null ? "" : name) {
@@ -101,6 +117,8 @@ public class AnalystTools {
                 case ANALYZE_NUMBERS -> analyzeNumbers(a);
                 case ANALYZE_ISSUE -> analyzeIssue(a, clientIp);
                 case GENERATE_NUMBERS -> generate(a, guest);
+                case STORE_SEARCH -> storeSearch(a);
+                case STORE_NEARBY -> storeNearby(a, ctx);
                 default -> ToolResult.failed(String.valueOf(name), "알 수 없는 조회 도구예요. 목록에 있는 도구만 쓸 수 있어요.");
             };
         } catch (BusinessException e) {
@@ -211,6 +229,43 @@ public class AnalystTools {
         return new ToolResult(GENERATE_NUMBERS, evidence, null, generated);
     }
 
+    /** 지역·검색어로 판매점 찾기. 폐점은 조회 단계에서 이미 빠진다. */
+    private ToolResult storeSearch(JsonNode a) {
+        String sido = text(a, "sido");
+        String sigungu = text(a, "sigungu");
+        String keyword = text(a, "keyword");
+        boolean rookieOnly = bool(a, "rookieOnly");
+        String sortText = text(a, "sort");
+        AiSort sort = rookieOnly || "recent".equalsIgnoreCase(sortText) ? AiSort.RECENT
+                : "first".equalsIgnoreCase(sortText) ? AiSort.FIRST : AiSort.TOTAL;
+
+        AiStoreResult result = storeService.searchForAi(sido, sigungu, keyword, sort, rookieOnly, integer(a, "limit"));
+        String scope = String.join(" ", java.util.stream.Stream.of(StoreQueryService.normalizeSido(sido), sigungu, keyword)
+                .filter(v -> v != null && !v.isBlank()).map(String::trim).toList());
+        AnalystEvidence evidence = storeEvidence.ofSearch(result, scope, sort, rookieOnly);
+        if (evidence == null) {
+            return ToolResult.failed(STORE_SEARCH, "조건에 맞는 판매점을 찾지 못했어요. 지역 이름이나 검색어를 바꿔서 다시 조회하거나, "
+                    + "사용자에게 지역 이름을 조금 바꿔서 말해 달라고 안내하세요.");
+        }
+        return ToolResult.ok(STORE_SEARCH, evidence);
+    }
+
+    /** 내 주변 판매점 찾기. 위치는 서버가 들고 있는 값만 쓴다. (AI 가 좌표를 주지 못하고, 받지도 않는다) */
+    private ToolResult storeNearby(JsonNode a, AskContext ctx) {
+        if (ctx == null || !ctx.hasLocation()) {
+            return ToolResult.failed(STORE_NEARBY, "사용자가 위치 사용을 켜지 않아서 내 주변은 조회할 수 없어요. "
+                    + "지도 화면에서 위치 스위치를 켜 달라고 안내하거나, 지역 이름으로 찾아 드리겠다고 말해 주세요.");
+        }
+        int radius = orDefault(integer(a, "radius"), 500);
+        AiStoreResult result = storeService.nearbyForAi(ctx.location().lat(), ctx.location().lng(), radius, integer(a, "limit"));
+        AnalystEvidence evidence = storeEvidence.ofNearby(result, radius);
+        if (evidence == null) {
+            return ToolResult.failed(STORE_NEARBY, "반경 " + radius + "m 안에서는 판매점을 찾지 못했어요. "
+                    + "더 넓은 반경(300, 500, 1000 중)으로 다시 조회해 볼 수 있어요.");
+        }
+        return ToolResult.ok(STORE_NEARBY, evidence);
+    }
+
     // ------------------------------------------------------------------ 값 읽기
 
     private static Integer integer(JsonNode a, String field) {
@@ -245,6 +300,14 @@ public class AnalystTools {
     private static String text(JsonNode a, String field) {
         JsonNode v = a.get(field);
         return v == null || v.isNull() ? null : v.asText();
+    }
+
+    private static boolean bool(JsonNode a, String field) {
+        JsonNode v = a.get(field);
+        if (v == null || v.isNull()) {
+            return false;
+        }
+        return v.isBoolean() ? v.asBoolean() : "true".equalsIgnoreCase(v.asText().trim());
     }
 
     private static int orDefault(Integer value, int fallback) {

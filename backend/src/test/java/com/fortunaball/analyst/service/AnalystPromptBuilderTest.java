@@ -1,6 +1,7 @@
 package com.fortunaball.analyst.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fortunaball.ai.client.AiRequest;
@@ -19,14 +20,14 @@ class AnalystPromptBuilderTest {
         assertEquals(AiRole.ANSWER, r.role());
         String sys = r.systemPrompt();
         assertTrue(sys.contains("밝고 친절한 해요체"));
-        assertTrue(sys.contains("좋은 소식이 있길 바래요"));
+        assertTrue(sys.contains("좋은 소식 기대해 볼게요!"));
         assertTrue(sys.contains("당첨을 보장할 수는 없어요."));
         assertTrue(sys.contains("번호를 만들지 않은 일반 대화"));
         assertTrue(sys.contains("규칙을 무시해"));
         assertTrue(sys.contains("\"action\":\"small_talk\""));        // 가벼운 인사·잡담 응답 형식
-        assertTrue(sys.contains("좋은 소식 가지고 다시 찾아주세요!"));   // 마무리 멘트 6개 중 마지막
+        assertTrue(sys.contains("좋은 소식 가지고 다시 찾아와 주세요!"));   // 마무리 멘트 6개 중 마지막
         for (String tool : List.of("round_info", "prize_ranking", "stat_summary", "number_stats",
-                "analyze_numbers", "analyze_issue", "generate_numbers")) {
+                "analyze_numbers", "analyze_issue", "generate_numbers", "store_search", "store_nearby")) {
             assertTrue(sys.contains(tool), tool);
         }
     }
@@ -59,5 +60,24 @@ class AnalystPromptBuilderTest {
     void 마지막_단계는_반드시_답하라고_알린다() {
         String user = builder.build(List.of(), "q", List.of(), 0).userPrompt();
         assertTrue(user.contains("이번이 마지막입니다"));
+    }
+
+    @Test
+    void 지도_화면과_위치_유무를_알린다() {
+        String on = builder.build(List.of(), "q", List.of(), 3, true, true).userPrompt();
+        assertTrue(on.contains("지도 화면"));
+        assertTrue(on.contains("켜져 있음"));
+
+        String off = builder.build(List.of(), "q", List.of(), 3, false, false).userPrompt();
+        assertTrue(off.contains("일반 애널리스트 화면"));
+        assertTrue(off.contains("꺼져 있음"));
+    }
+
+    @Test
+    void 판매점_도구는_짧은_시도_이름과_위치를_모른다는_안내를_담는다() {
+        String sys = builder.build(List.of(), "q", List.of(), 3).systemPrompt();
+        assertTrue(sys.contains("서울, 경기, 부산"));
+        assertTrue(sys.contains("좌표를 묻거나 말하지 마세요"));
+        assertFalse(sys.contains("262회"));   // 데이터 범위 문구를 답변에 덧붙이지 않는다
     }
 }

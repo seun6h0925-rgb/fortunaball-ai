@@ -19,7 +19,7 @@ INSERT INTO ai_input_policy (policy_code, policy_name, feature_scope, policy_typ
 ('PURCHASE_PUSH', '구매 유도 요청', 'ALL', 'PURCHASE_PUSH', 'FIXED_RESPONSE', 30,
  '저희 서비스는 로또 구매를 권장하거나 강요하지 않습니다.\n제공되는 번호는 통계 기반 참고 조합이며, 최종 선택은 사용자 본인의 판단에 따라 결정해주세요.', 1),
 ('LOCATION_REQUIRED', '위치 꺼짐 상태의 내 위치 질문', 'ANALYST', 'LOCATION_REQUIRED', 'FIXED_RESPONSE', 40,
- '내 위치 기준 질문은 위치 사용을 켜야 답할 수 있어요. 지도 위의 위치 스위치를 켜고 동의해 주세요. 위치는 저장되지 않아요.', 1),
+ '내 주변 판매점은 위치 사용을 켜시면 찾아 드릴 수 있어요. 지도 위의 위치 스위치를 켜 주세요. 위치는 저장되지 않아요. 지역 이름을 알려 주셔도 바로 찾아 드릴게요!', 1),
 ('OFF_TOPIC_MAP', '지도 AI 주제 이탈', 'ANALYST', 'OFF_TOPIC', 'FIXED_RESPONSE', 50,
  '지도 AI는 로또 판매점, 명당, 당첨 이력에 대한 질문만 도와드릴 수 있어요. 다른 질문은 답변하기 어려워요.', 1),
 ('OFF_TOPIC_ANALYST', '애널리스트 주제 이탈', 'ANALYST', 'OFF_TOPIC', 'FIXED_RESPONSE', 55,

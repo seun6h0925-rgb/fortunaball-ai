@@ -37,12 +37,18 @@ public class StoreQueryRepository {
     /** 최근 기간 안의 판매점별 횟수 (루키 명당 판정용) */
     public record RecentCount(int first, int second) { }
 
-    private static final String SELECT_STORE = "SELECT s.id, s.store_name, s.road_address, s.jibun_address, s.sido, s.sigungu, "
+    private static final String SELECT_COLUMNS = "SELECT s.id, s.store_name, s.road_address, s.jibun_address, s.sido, s.sigungu, "
             + "s.latitude, s.longitude, "
             + "COALESCE(w.first_auto_count, 0), COALESCE(w.first_manual_count, 0), "
-            + "COALESCE(w.first_semi_count, 0), COALESCE(w.second_count, 0) "
-            + "FROM lotto_store s LEFT JOIN store_win_summary w ON w.lotto_store_id = s.id "
-            + "WHERE s.is_closed = 0 AND s.latitude IS NOT NULL AND s.longitude IS NOT NULL";
+            + "COALESCE(w.first_semi_count, 0), COALESCE(w.second_count, 0) ";
+    private static final String FROM_STORE = "FROM lotto_store s LEFT JOIN store_win_summary w ON w.lotto_store_id = s.id ";
+    /**
+     * "인터넷 복권판매사이트"는 실제 가게가 아니라 동행복권 사이트의 인터넷 구매분이 한 줄로 합쳐진 자료라서
+     * 지도·검색·AI 답변에서 뺀다. (DB 에는 그대로 두고 조회할 때만 제외한다)
+     */
+    private static final String WHERE_OPEN = "WHERE s.is_closed = 0 AND s.latitude IS NOT NULL AND s.longitude IS NOT NULL "
+            + "AND s.store_name <> '인터넷 복권판매사이트'";
+    private static final String SELECT_STORE = SELECT_COLUMNS + FROM_STORE + WHERE_OPEN;
 
     private static final String TOTAL_WINS_ORDER = " ORDER BY (COALESCE(w.first_auto_count, 0) + COALESCE(w.first_manual_count, 0) "
             + "+ COALESCE(w.first_semi_count, 0) + COALESCE(w.second_count, 0)) DESC, s.id";
@@ -57,25 +63,10 @@ public class StoreQueryRepository {
     public StorePage search(String sido, String sigungu, String keyword, int page, int size) {
         StringBuilder where = new StringBuilder();
         List<Object> args = new ArrayList<>();
-        if (sido != null) {
-            where.append(" AND s.sido = ?");
-            args.add(sido);
-        }
-        if (sigungu != null) {
-            where.append(" AND s.sigungu = ?");
-            args.add(sigungu);
-        }
-        if (keyword != null) {
-            where.append(" AND (s.store_name LIKE ? OR s.road_address LIKE ? OR s.jibun_address LIKE ?)");
-            String like = "%" + escapeLike(keyword) + "%";
-            args.add(like);
-            args.add(like);
-            args.add(like);
-        }
+        appendFilters(where, args, sido, sigungu, keyword);
 
         Long total = jdbc.queryForObject(
-                "SELECT COUNT(*) FROM lotto_store s WHERE s.is_closed = 0 AND s.latitude IS NOT NULL AND s.longitude IS NOT NULL"
-                        + where, Long.class, args.toArray());
+                "SELECT COUNT(*) FROM lotto_store s " + WHERE_OPEN + where, Long.class, args.toArray());
 
         List<Object> pageArgs = new ArrayList<>(args);
         pageArgs.add(size);
@@ -83,6 +74,46 @@ public class StoreQueryRepository {
         List<StoreRow> rows = jdbc.query(SELECT_STORE + where + TOTAL_WINS_ORDER + " LIMIT ? OFFSET ?",
                 (rs, i) -> toRow(rs), pageArgs.toArray());
         return new StorePage(rows, total == null ? 0 : total);
+    }
+
+    /**
+     * 최근 기간 안에 당첨된 판매점 (최근 1등 많은 순 → 최근 2등 많은 순 → 총 당첨 많은 순). AI 애널리스트의 "최근 1년 당첨" 질문용.
+     *
+     * @param afterDate   이 날짜보다 뒤에 당첨된 이력만 센다 (루키 명당과 같은 기준)
+     * @param minFirst    null 이 아니면 "최근 1등 minFirst 회 이상 또는 최근 2등 minSecond 회 이상"인 곳만 (루키 명당)
+     * @param minSecond   minFirst 와 함께 쓴다
+     */
+    public List<StoreRow> searchRecent(String sido, String sigungu, String keyword, LocalDate afterDate,
+                                       Integer minFirst, Integer minSecond, int limit) {
+        StringBuilder where = new StringBuilder();
+        List<Object> args = new ArrayList<>();
+        args.add(afterDate);   // 아래 JOIN 안의 첫 번째 ? 자리 (순서가 중요하다)
+        appendFilters(where, args, sido, sigungu, keyword);
+        if (minFirst != null && minSecond != null) {
+            where.append(" AND (rc.r1 >= ? OR rc.r2 >= ?)");
+            args.add(minFirst);
+            args.add(minSecond);
+        }
+        args.add(limit);
+
+        String recentJoin = "JOIN (SELECT h.lotto_store_id AS sid, SUM(h.winning_rank = 1) AS r1, SUM(h.winning_rank = 2) AS r2 "
+                + "FROM store_winning_history h JOIN draw_round d ON d.round_no = h.round_no "
+                + "WHERE d.draw_date > ? GROUP BY h.lotto_store_id) rc ON rc.sid = s.id ";
+        String order = " ORDER BY rc.r1 DESC, rc.r2 DESC, (COALESCE(w.first_auto_count, 0) + COALESCE(w.first_manual_count, 0) "
+                + "+ COALESCE(w.first_semi_count, 0) + COALESCE(w.second_count, 0)) DESC, s.id LIMIT ?";
+        return jdbc.query(SELECT_COLUMNS + FROM_STORE + recentJoin + WHERE_OPEN + where + order,
+                (rs, i) -> toRow(rs), args.toArray());
+    }
+
+    /** 1등 횟수 많은 순 (같으면 2등 많은 순). AI 애널리스트의 "1등 많이 나온 곳" 질문용. 조건이 비어 있으면 그 조건은 쓰지 않는다. */
+    public List<StoreRow> searchByFirst(String sido, String sigungu, String keyword, int limit) {
+        StringBuilder where = new StringBuilder();
+        List<Object> args = new ArrayList<>();
+        appendFilters(where, args, sido, sigungu, keyword);
+        args.add(limit);
+        String order = " ORDER BY (COALESCE(w.first_auto_count, 0) + COALESCE(w.first_manual_count, 0) "
+                + "+ COALESCE(w.first_semi_count, 0)) DESC, COALESCE(w.second_count, 0) DESC, s.id LIMIT ?";
+        return jdbc.query(SELECT_STORE + where + order, (rs, i) -> toRow(rs), args.toArray());
     }
 
     /** 네모 범위 안의 판매점 (내 주변 조회의 후보. 정확한 거리 계산은 서비스에서 한다). */
@@ -148,6 +179,25 @@ public class StoreQueryRepository {
         return new StoreRow(rs.getLong(1), rs.getString(2), rs.getString(3), rs.getString(4),
                 rs.getString(5), rs.getString(6), rs.getDouble(7), rs.getDouble(8),
                 rs.getInt(9), rs.getInt(10), rs.getInt(11), rs.getInt(12));
+    }
+
+    /** 지역·검색어 조건을 WHERE 뒤에 이어 붙인다. (값은 ? 로 넘겨서 SQL 에 직접 섞이지 않는다) */
+    private static void appendFilters(StringBuilder where, List<Object> args, String sido, String sigungu, String keyword) {
+        if (sido != null) {
+            where.append(" AND s.sido = ?");
+            args.add(sido);
+        }
+        if (sigungu != null) {
+            where.append(" AND s.sigungu = ?");
+            args.add(sigungu);
+        }
+        if (keyword != null) {
+            where.append(" AND (s.store_name LIKE ? OR s.road_address LIKE ? OR s.jibun_address LIKE ?)");
+            String like = "%" + escapeLike(keyword) + "%";
+            args.add(like);
+            args.add(like);
+            args.add(like);
+        }
     }
 
     /** LIKE 검색에서 % 와 _ 와 \ 를 일반 글자로 취급하게 만든다. */

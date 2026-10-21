@@ -8,6 +8,7 @@ import com.fortunaball.ai.policy.PolicyHit;
 import com.fortunaball.ai.usage.AiFeature;
 import com.fortunaball.ai.usage.AiUsageSnapshot;
 import com.fortunaball.analyst.domain.AnalystEvidence;
+import com.fortunaball.analyst.domain.AskContext;
 import com.fortunaball.analyst.domain.ChatTurn;
 import com.fortunaball.analyst.domain.EvidenceItem;
 import com.fortunaball.analyst.domain.ParsedQuestion;
@@ -36,13 +37,12 @@ import org.springframework.stereotype.Service;
  *  2. 규칙 정책 검사 (당첨 보장·구매 유도·절박한 요청·위치 꺼짐) → 걸리면 고정 응답. AI 호출·차감 없음
  *     ⚠ 주제 이탈 키워드(OFF_TOPIC_ANALYST, OFF_TOPIC_MAP)에 걸려도 여기서 막지 않는다. 인사·잡담인지 아닌지는 AI 가 판단한다.
  *  2-1. 딱 봐도 단순한 인사·감사·사용법 질문("안녕", "고마워", "사용법 알려줘")은 고정 문구로 응답. AI 호출·차감 없음
- *  3. 지도 질문은 판매점 데이터가 아직 없어서 "준비 중" 고정 응답 (7번 지도 기능을 만들 때 연결한다)
- *  4. 무료 횟수 1회 차감 → AnalystAgent: AI 가 질문과 대화를 보고 조회 도구를 골라 쓰며 답한다
+ *  3. 무료 횟수 1회 차감 → AnalystAgent: AI 가 질문과 대화를 보고 조회 도구를 골라 쓰며 답한다
  *     - 가벼운 인사·잡담이면 AI 가 짧게 받아 주고 횟수를 돌려준다
  *     - 도와드릴 수 없는 이야기라고 AI 가 판단하면 고정 문구(3개 번갈아)로 응답하고 횟수를 돌려준다
  *     - 답을 못 만들면 횟수를 돌려주고 다시 물어보라고 안내한다
  *     - AI 호출이 실패하면 AiSession 이 횟수를 돌려준다
- *  5. 답변 검사 (길이·단정 표현). 통과 못 하면 조회한 근거로 만든 문장을 쓴다
+ *  4. 답변 검사 (길이·단정 표현). 통과 못 하면 조회한 근거로 만든 문장을 쓴다
  *
  * ⚠ 질문·이전 대화·위치 값은 저장하지도, 로그에 남기지도 않는다. (이전 대화는 화면이 요청마다 보내 준다)
  *    관리자 면제는 관리자 로그인을 만든 뒤에 연결한다. (지금은 모두 일반 사용자로 처리)
@@ -58,8 +58,6 @@ public class AnalystService {
     static final String POLICY_OFF_TOPIC_MAP = "OFF_TOPIC_MAP";
     static final String POLICY_SMALL_TALK_AI = "SMALL_TALK_AI";
     static final int MAX_SMALL_TALK_CHARS = 150;
-    static final String POLICY_MAP_DATA_PENDING = "MAP_DATA_PENDING";
-    static final String MAP_DATA_PENDING_MESSAGE = "판매점·명당 안내는 준비 중이에요. 조금만 기다려 주세요.";
     static final String NOTICE = "통계 기반 생성 번호입니다. 참고만 하세요. 당첨을 보장하지 않습니다.";
 
     private final QuestionParser parser;
@@ -103,15 +101,9 @@ public class AnalystService {
                     reply.suggestions(), reply.action());
         }
 
-        // 3) 판매점 데이터가 아직 없는 지도 질문
-        if (parsed.type() == QuestionType.MAP_STORE) {
-            return fixed(QuestionType.MAP_STORE.name(), POLICY_MAP_DATA_PENDING, MAP_DATA_PENDING_MESSAGE, guest, clientIp,
-                    List.of(), null);
-        }
-
-        // 4) 여기서 무료 횟수가 1회 차감된다. AI 호출이 실패하면 AiSession 이 자동으로 환불한다.
+        // 3) 여기서 무료 횟수가 1회 차감된다. AI 호출이 실패하면 AiSession 이 자동으로 환불한다.
         AiSession session = gateway.open(AiFeature.ANALYST, guest.value(), clientIp);
-        AnalystAgent.Result result = agent.run(session, history, question, guest, clientIp);
+        AnalystAgent.Result result = agent.run(session, history, question, guest, clientIp, askContext(mapContext, request));
 
         if (result.outcome() == Outcome.SMALL_TALK) {
             session.refund();   // 인사·잡담은 횟수를 쓰지 않는다
@@ -138,6 +130,9 @@ public class AnalystService {
             session.refund();   // 답을 만들지 못한 것도 사용자 잘못이 아니다
             charged = false;
             text = answerGuard.sanitize(null, evidence, result.generated() != null);
+            if (AnalystAnswerGuard.NO_EVIDENCE_FALLBACK.equals(text)) {
+                text += AnalystAnswerGuard.REFUND_NOTE;   // 횟수를 돌려준 경우에만 안내한다
+            }
         }
 
         GenerateResponse generated = result.generated();
@@ -148,6 +143,12 @@ public class AnalystService {
     }
 
     // ------------------------------------------------------------------ 보조
+
+    /** 화면(지도 여부)과 위치. 위치는 AI 에게 보내지 않고 내 주변 조회 도구가 서버 안에서만 쓴다. */
+    private static AskContext askContext(boolean mapContext, AnalystRequest request) {
+        boolean located = request.lat() != null && request.lng() != null;
+        return new AskContext(mapContext, located ? new AskContext.Location(request.lat(), request.lng()) : null);
+    }
 
     /** 고정 응답. AI 를 부르지 않았거나 횟수를 돌려준 경우라서 charged 는 항상 false 다. */
     private AnalystResponse fixed(String type, String policyCode, String message, GuestToken guest, String clientIp,

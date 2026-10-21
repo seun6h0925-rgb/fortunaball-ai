@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fortunaball.ai.AiSession;
 import com.fortunaball.ai.client.AiResponse;
+import com.fortunaball.analyst.domain.AskContext;
 import com.fortunaball.analyst.domain.ChatTurn;
 import com.fortunaball.analyst.service.AnalystTools.ToolResult;
 import com.fortunaball.common.guest.GuestToken;
@@ -51,14 +52,24 @@ public class AnalystAgent {
         this.mapper = mapper;
     }
 
+    /** 화면·위치 정보 없이 실행 (일반 애널리스트 화면, 위치 없음) */
     public Result run(AiSession session, List<ChatTurn> history, String question, GuestToken guest, String clientIp) {
+        return run(session, history, question, guest, clientIp, AskContext.NONE);
+    }
+
+    /**
+     * @param ctx 지도 화면인지, 위치가 있는지. 프롬프트에는 "지도 화면 여부"와 "위치가 켜져 있는지"만 알리고 좌표는 알리지 않는다.
+     *            내 주변 조회 도구가 이 값으로 서버 안에서 직접 조회한다.
+     */
+    public Result run(AiSession session, List<ChatTurn> history, String question, GuestToken guest, String clientIp,
+                      AskContext ctx) {
         List<String> observations = new ArrayList<>();
         List<ToolResult> results = new ArrayList<>();
         GenerateResponse generated = null;
 
         for (int step = 1; step <= MAX_STEPS; step++) {
             int toolStepsLeft = MAX_STEPS - step;
-            AiResponse response = session.call(promptBuilder.build(history, question, observations, toolStepsLeft));
+            AiResponse response = session.call(promptBuilder.build(history, question, observations, toolStepsLeft, ctx.map(), ctx.hasLocation()));
             Decision decision = parse(response.text());
 
             switch (decision.action()) {
@@ -78,7 +89,7 @@ public class AnalystAgent {
                             result = ToolResult.failed(AnalystTools.GENERATE_NUMBERS,
                                     "번호 생성은 한 질문에 한 번만 할 수 있어요. 이미 만든 번호로 답해 주세요.");
                         } else {
-                            result = tools.run(call.path("name").asText(), call.get("args"), guest, clientIp);
+                            result = tools.run(call.path("name").asText(), call.get("args"), guest, clientIp, ctx);
                         }
                         results.add(result);
                         observations.add(result.toPromptText());
