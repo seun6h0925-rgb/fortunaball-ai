@@ -41,7 +41,7 @@ public record AiProperties(
         @DefaultValue("300") int dailyCallLimit,
         @DefaultValue("10") BigDecimal monthlyCostLimitUsd,
         @DefaultValue("5") int userDailyLimit,
-        @DefaultValue("20") int ipDailyLimit,
+        @DefaultValue("10") int ipDailyLimit,
         @DefaultValue("50") int perMinuteLimit,
         @DefaultValue("0.10") BigDecimal classifierInputPerMillionUsd,
         @DefaultValue("0.50") BigDecimal classifierOutputPerMillionUsd,

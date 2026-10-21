@@ -224,27 +224,30 @@ class AnalystServiceTest {
     }
 
     @Test
-    void AI가_가벼운_인사로_판단하면_AI_문장을_보여주고_횟수를_돌려준다() {
+    void AI가_가벼운_잡담으로_판단하면_AI_문장을_답변으로_보여주고_횟수를_쓴다() {
         agentReturns(Outcome.SMALL_TALK, "점심 맛있게 드세요! 번호 통계가 궁금하면 물어보세요.", List.of(), null);
 
         AnalystResponse r = service.answer(ask("오늘 점심 뭐 먹지"), GUEST, IP);
 
-        assertEquals("SMALL_TALK_AI", r.policyCode());
-        assertEquals("점심 맛있게 드세요! 번호 통계가 궁금하면 물어보세요.", r.message());
-        assertNull(r.answer());
-        assertFalse(r.charged());
-        assertEquals(3, r.suggestions().size());
-        verify(session).refund();
+        assertNull(r.policyCode());
+        assertNull(r.message());
+        assertEquals("점심 맛있게 드세요! 번호 통계가 궁금하면 물어보세요.", r.answer());
+        assertEquals(r.answer(), r.historyText());          // 다음 질문의 이전 대화로 이어진다
+        assertTrue(r.charged());
+        assertNull(r.action());
+        assertEquals(3, r.suggestions().size());             // 선택해서 누르는 추천 질문
+        verify(session, never()).refund();
     }
 
     @Test
     void AI의_인사_답이_너무_길면_고정_문구로_바꾼다() {
-        agentReturns(Outcome.SMALL_TALK, "가".repeat(151), List.of(), null);
+        agentReturns(Outcome.SMALL_TALK, "가".repeat(201), List.of(), null);
 
         AnalystResponse r = service.answer(ask("오늘 점심 뭐 먹지"), GUEST, IP);
 
         assertEquals("OFF_TOPIC_ANALYST", r.policyCode());
         assertFalse(r.message().startsWith("가"));
+        verify(session).refund();   // 쓸 만한 글이 없으면 횟수를 돌려준다
     }
 
     // ------------------------------------------------------------------ 고정 문구 (인사·감사·사용법)
@@ -281,13 +284,17 @@ class AnalystServiceTest {
     }
 
     @Test
-    void 사용법_질문은_고정_문구에_사용_방법_보기_버튼이_붙는다() {
+    void 사용법_질문은_AI가_대화로_설명하고_횟수를_쓰며_사용_방법_보기_버튼이_붙는다() {
+        agentReturns(Outcome.ANSWER, "이렇게 말해 보세요. \"1000회 당첨번호 알려줘\"처럼요.", List.of(), null);
+
         AnalystResponse r = service.answer(ask("사용법 알려줘"), GUEST, IP);
 
-        assertEquals("USAGE_GUIDE", r.policyCode());
+        assertNull(r.policyCode());
+        assertTrue(r.answer().contains("이렇게 말해 보세요"));
         assertEquals("OPEN_GUIDE", r.action());
         assertEquals(3, r.suggestions().size());
-        assertFalse(r.charged());
+        assertTrue(r.charged());
+        verify(gateway).open(any(AiFeature.class), anyString(), anyString());
     }
 
     @Test

@@ -33,7 +33,7 @@ public enum ErrorCode {
     AI_MONTHLY_COST_LIMIT("AI-003", HttpStatus.SERVICE_UNAVAILABLE,
             "현재 AI 기능 이용이 일시 중단되었어요. 번호 생성과 통계 조회는 계속 이용할 수 있어요."),
     AI_USER_LIMIT("AI-004", HttpStatus.TOO_MANY_REQUESTS,
-            "오늘 무료 AI 이용 횟수를 모두 사용했어요. 내일 다시 이용해 주세요. 번호 생성과 통계 조회는 계속 이용할 수 있어요."),
+            "오늘 사용할 수 있는 무료 횟수를 모두 사용하셨어요. 내일 다시 찾아와 주시면 기쁘게 도와드릴게요! 번호 생성과 통계 조회는 계속 이용하실 수 있어요."),
     AI_CALL_FAILED("AI-005", HttpStatus.SERVICE_UNAVAILABLE,
             "AI 응답을 불러오지 못했어요. 잠시 후 다시 시도해 주세요. 번호 생성과 기본 통계 분석은 계속 이용할 수 있어요."),
 

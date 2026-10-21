@@ -37,8 +37,10 @@ import org.springframework.stereotype.Service;
  *  2. 규칙 정책 검사 (당첨 보장·구매 유도·절박한 요청·위치 꺼짐) → 걸리면 고정 응답. AI 호출·차감 없음
  *     ⚠ 주제 이탈 키워드(OFF_TOPIC_ANALYST, OFF_TOPIC_MAP)에 걸려도 여기서 막지 않는다. 인사·잡담인지 아닌지는 AI 가 판단한다.
  *  2-1. 딱 봐도 단순한 인사·감사·사용법 질문("안녕", "고마워", "사용법 알려줘")은 고정 문구로 응답. AI 호출·차감 없음
+ *     ⚠ 대화 우선: 고정 문구는 "안녕", "고마워" 같은 단순 인사·감사와 정책 차단, 주제 이탈 안내에만 쓴다.
+ *       사용법 질문("사용법 알려줘")은 AI 가 예시를 곁들여 대화로 풀어 설명한다. (횟수 1회 사용, 응답에 [사용 방법 보기] 버튼 action 은 붙는다)
  *  3. 무료 횟수 1회 차감 → AnalystAgent: AI 가 질문과 대화를 보고 조회 도구를 골라 쓰며 답한다
- *     - 가벼운 인사·잡담이면 AI 가 짧게 받아 주고 횟수를 돌려준다
+ *     - 가벼운 인사·잡담이면 AI 가 짧게 받아 주고 횟수를 쓴다. (AI 가 쓴 글은 모두 1회. 글을 못 쓴 경우만 돌려준다)
  *     - 도와드릴 수 없는 이야기라고 AI 가 판단하면 고정 문구(3개 번갈아)로 응답하고 횟수를 돌려준다
  *     - 답을 못 만들면 횟수를 돌려주고 다시 물어보라고 안내한다
  *     - AI 호출이 실패하면 AiSession 이 횟수를 돌려준다
@@ -56,8 +58,7 @@ public class AnalystService {
     static final String CONTEXT_MAP = "MAP";
     static final String POLICY_OFF_TOPIC = "OFF_TOPIC_ANALYST";
     static final String POLICY_OFF_TOPIC_MAP = "OFF_TOPIC_MAP";
-    static final String POLICY_SMALL_TALK_AI = "SMALL_TALK_AI";
-    static final int MAX_SMALL_TALK_CHARS = 150;
+    static final int MAX_SMALL_TALK_CHARS = 200;
     static final String NOTICE = "통계 기반 생성 번호입니다. 참고만 하세요. 당첨을 보장하지 않습니다.";
 
     private final QuestionParser parser;
@@ -93,9 +94,10 @@ public class AnalystService {
             return fixed(parsed.type().name(), hit.policyCode(), hit.message(), guest, clientIp, List.of(), null);
         }
 
-        // 2-1) 딱 봐도 단순한 인사·감사·사용법 질문
+        // 2-1) 딱 봐도 단순한 인사·감사는 고정 문구. 사용법 질문은 AI 가 대화로 설명하므로 아래로 넘긴다.
         Kind kind = smallTalk.detect(question, parsed.hasLottoInput()).orElse(null);
-        if (kind != null) {
+        boolean usageAsk = kind == Kind.USAGE;
+        if (kind != null && !usageAsk) {
             Reply reply = smallTalk.reply(kind, scene, history.isEmpty());
             return fixed("GENERAL", AnalystSmallTalk.codeOf(kind), reply.message(), guest, clientIp,
                     reply.suggestions(), reply.action());
@@ -106,14 +108,15 @@ public class AnalystService {
         AnalystAgent.Result result = agent.run(session, history, question, guest, clientIp, askContext(mapContext, request));
 
         if (result.outcome() == Outcome.SMALL_TALK) {
-            session.refund();   // 인사·잡담은 횟수를 쓰지 않는다
             String talk = result.text() == null ? "" : result.text().trim();
-            if (!talk.isEmpty() && talk.length() <= MAX_SMALL_TALK_CHARS) {
-                // AI 가 쓴 문장이라 정책 코드만 남기고 그대로 보여 준다. 너무 길면 고정 문구로 바꾼다.
-                gateway.recordBlocked(AiFeature.ANALYST, POLICY_SMALL_TALK_AI);
-                return new AnalystResponse("GENERAL", POLICY_SMALL_TALK_AI, talk, null, null, null, List.of(), NOTICE,
-                        remaining(guest, clientIp), null, smallTalk.suggestions(scene), null, false);
+            // 길이·단정 표현 검사를 통과한 AI 글만 보여 준다. (대화 우선: AI 가 쓴 글이므로 횟수 1회를 쓴다)
+            if (!talk.isEmpty() && talk.length() <= MAX_SMALL_TALK_CHARS
+                    && !AnalystAnswerGuard.NO_EVIDENCE_FALLBACK.equals(answerGuard.sanitize(talk, null))) {
+                return new AnalystResponse("GENERAL", null, null, talk, null, null, List.of(), NOTICE,
+                        remaining(guest, clientIp), talk, smallTalk.suggestions(scene),
+                        usageAsk ? AnalystSmallTalk.ACTION_OPEN_GUIDE : null, true);
             }
+            session.refund();   // 쓸 만한 글을 만들지 못했으면 횟수를 돌려주고 고정 문구로 안내한다
             return offTopic(scene, guest, clientIp);
         }
         if (result.outcome() == Outcome.OFF_TOPIC) {
@@ -139,7 +142,8 @@ public class AnalystService {
         return new AnalystResponse(typeOf(generated, evidence), null, null, text, generated,
                 evidence == null ? null : new AnalystResponse.Evidence(evidence.basis(), evidence.items()),
                 evidence == null ? List.of() : evidence.references(), NOTICE, remaining(guest, clientIp),
-                historyText(text, generated), List.of(), null, charged);
+                historyText(text, generated), usageAsk ? smallTalk.suggestions(scene) : List.of(),
+                usageAsk ? AnalystSmallTalk.ACTION_OPEN_GUIDE : null, charged);
     }
 
     // ------------------------------------------------------------------ 보조
