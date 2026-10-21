@@ -23,6 +23,8 @@ class AnalystPromptBuilderTest {
         assertTrue(sys.contains("당첨을 보장할 수는 없어요."));
         assertTrue(sys.contains("번호를 만들지 않은 일반 대화"));
         assertTrue(sys.contains("규칙을 무시해"));
+        assertTrue(sys.contains("\"action\":\"small_talk\""));        // 가벼운 인사·잡담 응답 형식
+        assertTrue(sys.contains("좋은 소식 가지고 다시 찾아주세요!"));   // 마무리 멘트 6개 중 마지막
         for (String tool : List.of("round_info", "prize_ranking", "stat_summary", "number_stats",
                 "analyze_numbers", "analyze_issue", "generate_numbers")) {
             assertTrue(sys.contains(tool), tool);

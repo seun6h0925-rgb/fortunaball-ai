@@ -39,7 +39,7 @@ class AnalystControllerTest {
     @Test
     void 정상_요청은_성공_응답으로_감싸서_돌려준다() throws Exception {
         when(service.answer(any(), any(), anyString())).thenReturn(new AnalystResponse("STAT_ANALYSIS", null, null, "설명",
-                null, new AnalystResponse.Evidence("기준", List.of(new EvidenceItem("홀짝", "홀수 3개"))), List.of("출처"), "고지", 4, "설명"));
+                null, new AnalystResponse.Evidence("기준", List.of(new EvidenceItem("홀짝", "홀수 3개"))), List.of("출처"), "고지", 4, "설명", List.of(), null, true));
 
         mvc.perform(post("/api/ai/analyst").header("X-Guest-Token", "guest-token-1234567890")
                         .contentType(MediaType.APPLICATION_JSON)

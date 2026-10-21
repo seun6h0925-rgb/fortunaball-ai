@@ -19,10 +19,14 @@ import java.util.List;
  *  notice         고정 안내 문구
  *  remainingToday 오늘 남은 무료 횟수 (제한 없음이면 null)
  *  historyText    다음 질문 때 history 에 assistant 내용으로 그대로 보내는 글. (답변 + 만든 번호)
+ *  suggestions    화면에 칩으로 보여 줄 추천 질문 (인사·사용법 같은 고정 응답에 붙는다. 없으면 빈 목록)
+ *  action         고정 응답에 붙는 버튼 종류. "OPEN_GUIDE" = [사용 방법 보기]. 없으면 null
+ *  charged        이번 질문으로 무료 횟수를 썼는지. 고정 응답·환불된 경우는 false
  */
 public record AnalystResponse(String questionType, String policyCode, String message, String answer,
                               GenerateResponse generated, Evidence evidence, List<String> references,
-                              String notice, Integer remainingToday, String historyText) {
+                              String notice, Integer remainingToday, String historyText,
+                              List<String> suggestions, String action, boolean charged) {
 
     public record Evidence(String basis, List<EvidenceItem> items) {
     }

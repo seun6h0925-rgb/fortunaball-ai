@@ -159,6 +159,20 @@ class AnalystAgentTest {
     }
 
     @Test
+    void 가벼운_인사_잡담은_SMALL_TALK() {
+        script("{\"action\":\"small_talk\",\"text\":\"반가워요! 번호 통계가 궁금하면 물어보세요.\"}");
+        Result r = run();
+        assertEquals(Outcome.SMALL_TALK, r.outcome());
+        assertEquals("반가워요! 번호 통계가 궁금하면 물어보세요.", r.text());
+    }
+
+    @Test
+    void 인사_답이_비어_있으면_주제_이탈로_본다() {
+        script("{\"action\":\"small_talk\",\"text\":\"  \"}");
+        assertEquals(Outcome.OFF_TOPIC, run().outcome());
+    }
+
+    @Test
     void JSON_없이_글로만_답해도_답변으로_쓴다() {
         script("그냥 글로 답했어요");
         Result r = run();

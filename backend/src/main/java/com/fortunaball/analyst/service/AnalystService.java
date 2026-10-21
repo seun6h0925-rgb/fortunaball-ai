@@ -15,6 +15,9 @@ import com.fortunaball.analyst.domain.QuestionType;
 import com.fortunaball.analyst.dto.AnalystRequest;
 import com.fortunaball.analyst.dto.AnalystResponse;
 import com.fortunaball.analyst.service.AnalystAgent.Outcome;
+import com.fortunaball.analyst.service.AnalystSmallTalk.Kind;
+import com.fortunaball.analyst.service.AnalystSmallTalk.Reply;
+import com.fortunaball.analyst.service.AnalystSmallTalk.Scene;
 import com.fortunaball.analyst.service.AnalystTools.ToolResult;
 import com.fortunaball.common.exception.BusinessException;
 import com.fortunaball.common.exception.ErrorCode;
@@ -30,11 +33,13 @@ import org.springframework.stereotype.Service;
  * AI 로또 애널리스트 (API-07) 처리 순서
  *
  *  1. 입력 검사 (질문 1~300자, context 는 비움/MAP, 위치는 위도·경도가 함께 있어야 함, 이전 대화 정리)
- *  2. 규칙 정책 검사 (당첨 보장·구매 유도·절박한 요청·위치 꺼짐·주제 이탈 키워드) → 걸리면 고정 응답. AI 호출·차감 없음
- *     (이어지는 대화 중에는 "로또 단어가 있어야 한다"는 주제 이탈 키워드 검사를 건너뛴다. "그럼 그걸로 해줘"를 막지 않기 위해서다)
+ *  2. 규칙 정책 검사 (당첨 보장·구매 유도·절박한 요청·위치 꺼짐) → 걸리면 고정 응답. AI 호출·차감 없음
+ *     ⚠ 주제 이탈 키워드(OFF_TOPIC_ANALYST, OFF_TOPIC_MAP)에 걸려도 여기서 막지 않는다. 인사·잡담인지 아닌지는 AI 가 판단한다.
+ *  2-1. 딱 봐도 단순한 인사·감사·사용법 질문("안녕", "고마워", "사용법 알려줘")은 고정 문구로 응답. AI 호출·차감 없음
  *  3. 지도 질문은 판매점 데이터가 아직 없어서 "준비 중" 고정 응답 (7번 지도 기능을 만들 때 연결한다)
  *  4. 무료 횟수 1회 차감 → AnalystAgent: AI 가 질문과 대화를 보고 조회 도구를 골라 쓰며 답한다
- *     - 로또와 무관하다고 AI 가 판단하면 고정 문구로 응답하고 횟수를 돌려준다
+ *     - 가벼운 인사·잡담이면 AI 가 짧게 받아 주고 횟수를 돌려준다
+ *     - 도와드릴 수 없는 이야기라고 AI 가 판단하면 고정 문구(3개 번갈아)로 응답하고 횟수를 돌려준다
  *     - 답을 못 만들면 횟수를 돌려주고 다시 물어보라고 안내한다
  *     - AI 호출이 실패하면 AiSession 이 횟수를 돌려준다
  *  5. 답변 검사 (길이·단정 표현). 통과 못 하면 조회한 근거로 만든 문장을 쓴다
@@ -50,7 +55,9 @@ public class AnalystService {
     static final int MAX_HISTORY_CONTENT = 800;
     static final String CONTEXT_MAP = "MAP";
     static final String POLICY_OFF_TOPIC = "OFF_TOPIC_ANALYST";
-    static final String OFF_TOPIC_MESSAGE = "번호 생성과 무관한 주제의 이야기는 죄송하지만 처리할 수 없어요.";
+    static final String POLICY_OFF_TOPIC_MAP = "OFF_TOPIC_MAP";
+    static final String POLICY_SMALL_TALK_AI = "SMALL_TALK_AI";
+    static final int MAX_SMALL_TALK_CHARS = 150;
     static final String POLICY_MAP_DATA_PENDING = "MAP_DATA_PENDING";
     static final String MAP_DATA_PENDING_MESSAGE = "판매점·명당 안내는 준비 중이에요. 조금만 기다려 주세요.";
     static final String NOTICE = "통계 기반 생성 번호입니다. 참고만 하세요. 당첨을 보장하지 않습니다.";
@@ -60,6 +67,7 @@ public class AnalystService {
     private final AnalystAgent agent;
     private final AnalystAnswerGuard answerGuard;
     private final AiGateway gateway;
+    private final AnalystSmallTalk smallTalk = new AnalystSmallTalk();   // 계산만 하는 클래스라서 직접 만든다
 
     public AnalystService(QuestionParser parser, AiPolicyEngine policyEngine, AnalystAgent agent,
                           AnalystAnswerGuard answerGuard, AiGateway gateway) {
@@ -80,32 +88,55 @@ public class AnalystService {
         // 2) 규칙 정책 검사
         ParsedQuestion parsed = parser.parse(question, mapContext);
         boolean hasLottoInput = parsed.hasLottoInput() || !history.isEmpty();
+        Scene scene = mapContext ? Scene.MAP : Scene.GENERAL;
         PolicyHit hit = policyEngine.check(PolicyContext.analyst(question, mapContext, hasLocation, hasLottoInput)).orElse(null);
-        if (hit != null) {
-            return fixed(parsed.type().name(), hit.policyCode(), hit.message(), guest, clientIp);
+        // 주제 이탈 키워드는 AI 가 판단하게 한다. ("안녕" 같은 인사도 이 키워드에는 걸리기 때문이다)
+        if (hit != null && !isOffTopicKeywordHit(hit)) {
+            return fixed(parsed.type().name(), hit.policyCode(), hit.message(), guest, clientIp, List.of(), null);
+        }
+
+        // 2-1) 딱 봐도 단순한 인사·감사·사용법 질문
+        Kind kind = smallTalk.detect(question, parsed.hasLottoInput()).orElse(null);
+        if (kind != null) {
+            Reply reply = smallTalk.reply(kind, scene, history.isEmpty());
+            return fixed("GENERAL", AnalystSmallTalk.codeOf(kind), reply.message(), guest, clientIp,
+                    reply.suggestions(), reply.action());
         }
 
         // 3) 판매점 데이터가 아직 없는 지도 질문
         if (parsed.type() == QuestionType.MAP_STORE) {
-            return fixed(QuestionType.MAP_STORE.name(), POLICY_MAP_DATA_PENDING, MAP_DATA_PENDING_MESSAGE, guest, clientIp);
+            return fixed(QuestionType.MAP_STORE.name(), POLICY_MAP_DATA_PENDING, MAP_DATA_PENDING_MESSAGE, guest, clientIp,
+                    List.of(), null);
         }
 
         // 4) 여기서 무료 횟수가 1회 차감된다. AI 호출이 실패하면 AiSession 이 자동으로 환불한다.
         AiSession session = gateway.open(AiFeature.ANALYST, guest.value(), clientIp);
         AnalystAgent.Result result = agent.run(session, history, question, guest, clientIp);
 
+        if (result.outcome() == Outcome.SMALL_TALK) {
+            session.refund();   // 인사·잡담은 횟수를 쓰지 않는다
+            String talk = result.text() == null ? "" : result.text().trim();
+            if (!talk.isEmpty() && talk.length() <= MAX_SMALL_TALK_CHARS) {
+                // AI 가 쓴 문장이라 정책 코드만 남기고 그대로 보여 준다. 너무 길면 고정 문구로 바꾼다.
+                gateway.recordBlocked(AiFeature.ANALYST, POLICY_SMALL_TALK_AI);
+                return new AnalystResponse("GENERAL", POLICY_SMALL_TALK_AI, talk, null, null, null, List.of(), NOTICE,
+                        remaining(guest, clientIp), null, smallTalk.suggestions(scene), null, false);
+            }
+            return offTopic(scene, guest, clientIp);
+        }
         if (result.outcome() == Outcome.OFF_TOPIC) {
-            session.refund();   // AI 가 로또와 무관하다고 판단한 요청은 사용자 잘못이 아니라서 횟수를 돌려준다
-            String message = policyEngine.policyOf(POLICY_OFF_TOPIC).map(PolicyHit::message).orElse(OFF_TOPIC_MESSAGE);
-            return fixed(QuestionType.STAT_ANALYSIS.name(), POLICY_OFF_TOPIC, message, guest, clientIp);
+            session.refund();   // AI 가 도와드릴 수 없다고 판단한 요청은 사용자 잘못이 아니라서 횟수를 돌려준다
+            return offTopic(scene, guest, clientIp);
         }
 
         AnalystEvidence evidence = merge(result.okResults());
         String text;
+        boolean charged = true;
         if (result.outcome() == Outcome.ANSWER) {
             text = answerGuard.sanitize(result.text(), evidence, result.generated() != null);
         } else {
             session.refund();   // 답을 만들지 못한 것도 사용자 잘못이 아니다
+            charged = false;
             text = answerGuard.sanitize(null, evidence, result.generated() != null);
         }
 
@@ -113,15 +144,28 @@ public class AnalystService {
         return new AnalystResponse(typeOf(generated, evidence), null, null, text, generated,
                 evidence == null ? null : new AnalystResponse.Evidence(evidence.basis(), evidence.items()),
                 evidence == null ? List.of() : evidence.references(), NOTICE, remaining(guest, clientIp),
-                historyText(text, generated));
+                historyText(text, generated), List.of(), null, charged);
     }
 
     // ------------------------------------------------------------------ 보조
 
-    private AnalystResponse fixed(String type, String policyCode, String message, GuestToken guest, String clientIp) {
+    /** 고정 응답. AI 를 부르지 않았거나 횟수를 돌려준 경우라서 charged 는 항상 false 다. */
+    private AnalystResponse fixed(String type, String policyCode, String message, GuestToken guest, String clientIp,
+                                  List<String> suggestions, String action) {
         gateway.recordBlocked(AiFeature.ANALYST, policyCode);
         return new AnalystResponse(type, policyCode, message, null, null, null, List.of(), NOTICE,
-                remaining(guest, clientIp), null);
+                remaining(guest, clientIp), null, suggestions, action, false);
+    }
+
+    /** 도와드릴 수 없는 이야기에 대한 고정 문구 (화면마다 3개씩 번갈아) */
+    private AnalystResponse offTopic(Scene scene, GuestToken guest, String clientIp) {
+        Reply reply = smallTalk.offTopic(scene);
+        return fixed(QuestionType.STAT_ANALYSIS.name(), POLICY_OFF_TOPIC, reply.message(), guest, clientIp,
+                reply.suggestions(), null);
+    }
+
+    private static boolean isOffTopicKeywordHit(PolicyHit hit) {
+        return POLICY_OFF_TOPIC.equals(hit.policyCode()) || POLICY_OFF_TOPIC_MAP.equals(hit.policyCode());
     }
 
     private Integer remaining(GuestToken guest, String clientIp) {

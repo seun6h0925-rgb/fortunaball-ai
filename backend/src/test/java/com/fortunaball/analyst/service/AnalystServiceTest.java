@@ -1,6 +1,7 @@
 package com.fortunaball.analyst.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -11,6 +12,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,7 +39,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -113,6 +117,9 @@ class AnalystServiceTest {
         assertNull(r.policyCode());
         assertNull(r.generated());
         assertEquals(r.answer(), r.historyText());
+        assertTrue(r.charged());                 // AI 가 답했으니 횟수를 쓴 것
+        assertTrue(r.suggestions().isEmpty());
+        assertNull(r.action());
     }
 
     @Test
@@ -149,12 +156,13 @@ class AnalystServiceTest {
     }
 
     @Test
-    void 이전_대화가_없고_로또_단어도_없으면_고정_응답() {
+    void 로또_단어가_없는_말도_키워드로_막지_않고_AI가_판단한다() {
+        agentReturns(Outcome.OFF_TOPIC, null, List.of(), null);
+
         AnalystResponse r = service.answer(ask("오늘 날씨 어때"), GUEST, IP);
+
+        verify(gateway).open(any(AiFeature.class), anyString(), anyString());   // AI 를 불렀다
         assertEquals("OFF_TOPIC_ANALYST", r.policyCode());
-        assertEquals("번호 생성과 무관한 주제의 이야기는 죄송하지만 처리할 수 없어요.", r.message());
-        verify(gateway, never()).open(any(), anyString(), anyString());
-        verify(gateway).recordBlocked(AiFeature.ANALYST, "OFF_TOPIC_ANALYST");
     }
 
     @Test
@@ -197,16 +205,108 @@ class AnalystServiceTest {
     }
 
     @Test
-    void AI가_주제_이탈로_판단하면_횟수를_돌려주고_고정_문구() {
+    void AI가_주제_이탈로_판단하면_횟수를_돌려주고_고정_문구_3개를_번갈아_쓴다() {
         agentReturns(Outcome.OFF_TOPIC, null, List.of(), null);
 
-        AnalystResponse r = service.answer(ask("로또 말고 요리 알려줘"), GUEST, IP);
+        Set<String> messages = new HashSet<>();
+        for (int i = 0; i < 3; i++) {
+            AnalystResponse r = service.answer(ask("로또 말고 요리 알려줘"), GUEST, IP);
+            assertEquals("OFF_TOPIC_ANALYST", r.policyCode());
+            assertNull(r.answer());
+            assertFalse(r.charged());
+            assertEquals(3, r.suggestions().size());
+            messages.add(r.message());
+        }
+        assertEquals(3, messages.size());   // 세 번 물으면 서로 다른 문구 3개
+        verify(session, times(3)).refund();
+        verify(gateway, times(3)).recordBlocked(AiFeature.ANALYST, "OFF_TOPIC_ANALYST");
+    }
+
+    @Test
+    void AI가_가벼운_인사로_판단하면_AI_문장을_보여주고_횟수를_돌려준다() {
+        agentReturns(Outcome.SMALL_TALK, "점심 맛있게 드세요! 번호 통계가 궁금하면 물어보세요.", List.of(), null);
+
+        AnalystResponse r = service.answer(ask("오늘 점심 뭐 먹지"), GUEST, IP);
+
+        assertEquals("SMALL_TALK_AI", r.policyCode());
+        assertEquals("점심 맛있게 드세요! 번호 통계가 궁금하면 물어보세요.", r.message());
+        assertNull(r.answer());
+        assertFalse(r.charged());
+        assertEquals(3, r.suggestions().size());
+        verify(session).refund();
+    }
+
+    @Test
+    void AI의_인사_답이_너무_길면_고정_문구로_바꾼다() {
+        agentReturns(Outcome.SMALL_TALK, "가".repeat(151), List.of(), null);
+
+        AnalystResponse r = service.answer(ask("오늘 점심 뭐 먹지"), GUEST, IP);
 
         assertEquals("OFF_TOPIC_ANALYST", r.policyCode());
-        assertEquals("번호 생성과 무관한 주제의 이야기는 죄송하지만 처리할 수 없어요.", r.message());
-        assertNull(r.answer());
-        verify(session).refund();
-        verify(gateway).recordBlocked(AiFeature.ANALYST, "OFF_TOPIC_ANALYST");
+        assertFalse(r.message().startsWith("가"));
+    }
+
+    // ------------------------------------------------------------------ 고정 문구 (인사·감사·사용법)
+
+    @Test
+    void 첫_인사는_고정_문구이고_AI도_횟수도_쓰지_않는다() {
+        AnalystResponse r = service.answer(ask("안녕하세요!"), GUEST, IP);
+
+        assertEquals("SMALL_TALK_GREETING", r.policyCode());
+        assertTrue(r.message().contains("AI 애널리스트"));       // 대화 처음 인사 문구
+        assertEquals(3, r.suggestions().size());
+        assertNull(r.action());
+        assertFalse(r.charged());
+        verify(gateway, never()).open(any(), anyString(), anyString());
+        verify(agent, never()).run(any(), any(), anyString(), any(), anyString());
+    }
+
+    @Test
+    void 대화_중_인사는_첫_인사와_다른_문구() {
+        List<ChatTurn> history = List.of(new ChatTurn("user", "1000회 알려줘"), new ChatTurn("assistant", "1000회는 이래요"));
+
+        AnalystResponse r = service.answer(new AnalystRequest("안녕", null, null, null, history), GUEST, IP);
+
+        assertEquals("SMALL_TALK_GREETING", r.policyCode());
+        assertFalse(r.message().contains("AI 애널리스트"));
+    }
+
+    @Test
+    void 감사_인사도_고정_문구() {
+        AnalystResponse r = service.answer(ask("고마워~"), GUEST, IP);
+
+        assertEquals("SMALL_TALK_THANKS", r.policyCode());
+        verify(gateway, never()).open(any(), anyString(), anyString());
+    }
+
+    @Test
+    void 사용법_질문은_고정_문구에_사용_방법_보기_버튼이_붙는다() {
+        AnalystResponse r = service.answer(ask("사용법 알려줘"), GUEST, IP);
+
+        assertEquals("USAGE_GUIDE", r.policyCode());
+        assertEquals("OPEN_GUIDE", r.action());
+        assertEquals(3, r.suggestions().size());
+        assertFalse(r.charged());
+    }
+
+    @Test
+    void 인사가_섞인_로또_질문은_고정_문구가_아니라_AI가_답한다() {
+        agentReturns(Outcome.ANSWER, "1000회 번호예요.", List.of(), null);
+
+        AnalystResponse r = service.answer(ask("안녕 1000회 당첨금 알려줘"), GUEST, IP);
+
+        assertNull(r.policyCode());
+        assertTrue(r.charged());
+        verify(gateway).open(any(AiFeature.class), anyString(), anyString());
+    }
+
+    @Test
+    void 지도_화면의_인사는_판매점_문구() {
+        AnalystResponse r = service.answer(new AnalystRequest("안녕", "MAP", null, null, null), GUEST, IP);
+
+        assertEquals("SMALL_TALK_GREETING", r.policyCode());
+        assertTrue(r.message().contains("판매점") || r.message().contains("동네"));
+        assertTrue(r.suggestions().get(0).contains("강남구"));
     }
 
     @Test
@@ -215,6 +315,7 @@ class AnalystServiceTest {
         AnalystResponse r = service.answer(ask("로또 통계 알려줘"), GUEST, IP);
         verify(session).refund();
         assertTrue(r.answer().contains("다시 물어봐"));
+        assertFalse(r.charged());
     }
 
     @Test

@@ -28,8 +28,11 @@ public class AnalystAgent {
     static final int MAX_STEPS = 4;
     static final int MAX_CALLS_PER_STEP = 3;
 
-    /** 루프가 끝난 모양. ANSWER 면 text 가 답변, OFF_TOPIC 이면 주제 이탈, GAVE_UP 이면 답을 만들지 못함 */
-    public enum Outcome { ANSWER, OFF_TOPIC, GAVE_UP }
+    /**
+     * 루프가 끝난 모양. ANSWER 면 text 가 답변, SMALL_TALK 이면 text 가 AI 가 쓴 짧은 인사·잡담 답,
+     * OFF_TOPIC 이면 주제 이탈, GAVE_UP 이면 답을 만들지 못함
+     */
+    public enum Outcome { ANSWER, SMALL_TALK, OFF_TOPIC, GAVE_UP }
 
     public record Result(Outcome outcome, String text, List<ToolResult> toolResults, GenerateResponse generated) {
 
@@ -63,6 +66,8 @@ public class AnalystAgent {
                     return new Result(Outcome.OFF_TOPIC, null, results, generated);
                 case "answer":
                     return new Result(Outcome.ANSWER, decision.text(), results, generated);
+                case "small_talk":
+                    return new Result(Outcome.SMALL_TALK, decision.text(), results, generated);
                 case "tools":
                     if (toolStepsLeft == 0) {
                         return new Result(Outcome.GAVE_UP, null, results, generated);
@@ -91,7 +96,7 @@ public class AnalystAgent {
 
     // ------------------------------------------------------------------ AI 응답 읽기
 
-    /** action: answer / off_topic / tools / invalid */
+    /** action: answer / small_talk / off_topic / tools / invalid */
     record Decision(String action, String text, List<JsonNode> calls) {
     }
 
@@ -116,6 +121,11 @@ public class AnalystAgent {
                 case "answer": {
                     String answer = node.path("text").asText("").trim();
                     return answer.isEmpty() ? new Decision("invalid", null, List.of()) : new Decision("answer", answer, List.of());
+                }
+                case "small_talk": {
+                    // 글이 비어 있으면 인사 답을 만들지 못한 것이므로 주제 이탈과 같은 고정 문구로 처리한다.
+                    String talk = node.path("text").asText("").trim();
+                    return talk.isEmpty() ? new Decision("off_topic", null, List.of()) : new Decision("small_talk", talk, List.of());
                 }
                 case "tools": {
                     List<JsonNode> calls = new ArrayList<>();
