@@ -25,8 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 /**
  * 관리자 인증 검수 (API-28 목록, API-29 검수 처리, API-62 사진 보기).
  *
- * ⚠ 관리자 로그인(세션)을 만들기 전이라 지금은 누구나 부를 수 있다. 관리자 사이트 단계에서 /api/admin/** 전체에 로그인 검사를 붙이고,
- *    그 전에는 서버를 외부에 공개하지 않는다. (배포 전 필수 확인 항목)
+ * 로그인한 관리자만 쓸 수 있다. (/api/admin/** 전체를 SecurityConfig 가 막는다. 로그인 없으면 401, 데이터를 바꾸는 요청은 CSRF 헤더 필요)
  */
 @RestController
 @RequestMapping("/api/admin/verifications")

@@ -37,6 +37,9 @@ public enum ErrorCode {
     AI_CALL_FAILED("AI-005", HttpStatus.SERVICE_UNAVAILABLE,
             "AI 응답을 불러오지 못했어요. 잠시 후 다시 시도해 주세요. 번호 생성과 기본 통계 분석은 계속 이용할 수 있어요."),
 
+    // ---- 관리자 ----
+    ADMIN_LOGIN_FAILED("ADMIN-001", HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않아요."),
+
     INTERNAL_ERROR("COMMON-999", HttpStatus.INTERNAL_SERVER_ERROR, "일시적인 오류가 발생했어요. 잠시 후 다시 시도해 주세요.");
 
     private final String code;

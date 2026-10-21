@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
  *
  * ⚠ 헷갈리기 쉬운 점
  *  - 조회만 하고 횟수를 쓰지 않는다. 화면이 열릴 때마다 불러도 된다.
- *  - 관리자 여부는 지금 항상 false 다. 관리자 로그인이 만들어지면 세션으로 판단해서 넘긴다.
+ *  - 관리자 여부는 AiGateway 가 로그인 세션으로 판단한다. 로그인한 관리자에게는 제한 없음(unlimited)으로 보인다.
  *    (사용자가 보내는 값으로 관리자를 판단하면 안 된다)
  */
 @RestController

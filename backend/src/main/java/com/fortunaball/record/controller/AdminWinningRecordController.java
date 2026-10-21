@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * 당첨 기록 공개 설정 (API-27, 관리자). recordId 는 winning_verification.id 이다.
- * ⚠ 관리자 로그인 전이라 지금은 누구나 부를 수 있다. (AdminVerificationController 와 같은 주의사항: 로그인 붙이기 전에는 외부 공개 금지)
+ * 로그인한 관리자만 쓸 수 있다. (SecurityConfig 가 /api/admin/** 전체를 막는다)
  */
 @RestController
 @RequestMapping("/api/admin/winning-records")

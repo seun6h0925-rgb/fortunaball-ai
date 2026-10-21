@@ -35,6 +35,12 @@ spring:
 
 # 번호 생성 설정 (generate 패키지의 GenerationProperties 가 읽는다)
 fortuna:
+  # 관리자 설정 (admin.auth.config.AdminProperties 가 읽는다)
+  admin:
+    login-id: ${ADMIN_LOGIN_ID:}     # 첫 관리자 계정 아이디. .env 의 ADMIN_LOGIN_ID. 관리자가 한 명도 없을 때만 서버 시작 때 만든다.
+    password: ${ADMIN_INITIAL_PASSWORD:}   # 첫 관리자 비밀번호(8자 이상). .env 의 ADMIN_INITIAL_PASSWORD. DB 에는 BCrypt 해시만 저장한다.
+    max-login-failures: 5            # 한 접속지(IP)에서 이 횟수만큼 틀리면 로그인을 잠시 막는다. (429)
+    lock-minutes: 15                 # 막는 시간(분)
   generate:
     ttl-minutes: 30                  # 임시 결과를 보관하는 시간 (분). 이 시간이 지나면 확정할 수 없다.
     max-games: 50                    # 한 번에 만들 수 있는 최대 게임 수 (1~이 값)
@@ -54,7 +60,7 @@ fortuna:
     daily-call-limit: 300            # 서비스 전체 하루 AI 호출 상한(서울 날짜 기준). 넘으면 AI 만 중지(503)
     monthly-cost-limit-usd: 10       # 서비스 전체 월 비용 상한(USD, 매월 1일부터). 넘으면 AI 만 중지(503)
     user-daily-limit: 5              # 비회원 1명(guest_token)의 하루 무료 AI 횟수. 넘으면 429
-    ip-daily-limit: 20               # 접속지(IP) 1곳의 하루 AI 횟수. guest_token 을 바꿔 우회하는 것을 막는 안전망
+    ip-daily-limit: 10               # 접속지(IP) 1곳의 하루 AI 횟수. guest_token 을 바꿔 우회하는 것을 막는 안전망
     per-minute-limit: 50             # 1분에 보낼 수 있는 AI 요청 횟수(사용자별·접속지별 각각, 자동 호출 방지용). 일반 사용은 못 느끼는 값. 넘으면 429
     # 모델별 가격(100만 토큰당 USD). 모델을 바꾸면 같이 바꾼다. 비용 추정과 월 한도 계산에 쓴다.
     classifier-input-per-million-usd: 0.10
@@ -70,6 +76,13 @@ fortuna:
 
 server:
   port: 8080
+  servlet:
+    session:
+      timeout: 30m                   # 관리자 로그인 세션: 30분 동안 요청이 없으면 로그아웃
+      cookie:
+        http-only: true              # 화면 스크립트가 세션 쿠키를 읽지 못하게 한다.
+        same-site: lax               # 다른 사이트에서 오는 요청에는 세션 쿠키를 보내지 않는다.
+        secure: false                # 로컬(http) 개발용. 실서버(https)에서는 true 로 바꾼다. (배포 점검 항목)
   error:
     include-message: never           # 기본 오류 화면에 내부 메시지를 내보내지 않는다.
     include-stacktrace: never

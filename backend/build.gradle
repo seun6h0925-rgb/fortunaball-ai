@@ -1,6 +1,6 @@
 // 포르투나볼 AI 백엔드 빌드 설정
 // - Java 21, Spring Boot 3.x
-// - 라이브러리를 추가할 때는 "기능 하나를 만들 때" 필요한 것만 추가한다. (Security는 관리자 로그인 기능 때 추가)
+// - 라이브러리를 추가할 때는 "기능 하나를 만들 때" 필요한 것만 추가한다. (Security 는 관리자 로그인 기능 때 추가했다)
 plugins {
     id 'java'
     id 'org.springframework.boot' version '3.5.0'
@@ -23,6 +23,7 @@ repositories {
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-security'   // 관리자 세션 로그인, 비밀번호 BCrypt 해시, 변조 요청 방지(CSRF)
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'   // 기본 CRUD (통계 집계는 직접 SQL)
     runtimeOnly 'com.mysql:mysql-connector-j'
     implementation 'com.github.ben-manes.caffeine:caffeine'                  // 번호 생성 임시 결과를 30분만 보관(만료 시간 있는 캐시). 버전은 Spring Boot 가 맞춰 준다.
