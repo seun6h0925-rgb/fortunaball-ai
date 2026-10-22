@@ -171,3 +171,18 @@
 .adnums { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
 .adform__add { display: grid; grid-template-columns: 80px 1fr auto; gap: 8px; margin-bottom: 10px; }
 .adform__sw { display: flex; align-items: center; justify-content: space-between; margin: 12px 0; font-size: 14px; }
+
+/* 콘텐츠(AD-11) */
+.adfilter--tabs { padding: 12px 16px; }
+.adform__two--top { align-items: center; margin-top: 12px; }
+
+/* 서비스 통계(AD-12) */
+.adline { width: 100%; height: auto; }
+.adline__grid { stroke: var(--line-soft); stroke-width: 1; }
+.adline__t { fill: var(--on-navy-mute); font-size: 11px; }
+.adline__area { fill: rgba(124, 200, 252, 0.16); }
+.adline__path { fill: none; stroke: #7cc8fc; stroke-width: 2.5; stroke-linejoin: round; }
+.adup { color: var(--up); }
+.addown { color: var(--down); }
+.adpop { display: grid; grid-template-columns: 20px 110px minmax(0, 1fr) 56px; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 14px; }
+.adpop em { font-style: normal; text-align: right; }
