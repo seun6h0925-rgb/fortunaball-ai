@@ -32,7 +32,10 @@ import java.time.LocalDate;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Random;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -197,6 +200,37 @@ public class GenerateService {
         Set<String> excluded = new HashSet<>(comboCountRepo.findKeysAtLimit(targetRound, props.maxIssuePerCombo()));
         excluded.addAll(extraExcluded);
         return runGenerator(condition, count, profile, excluded, code, targetRound);
+    }
+
+    /**
+     * 패턴 모아보기(API-44)의 "구성 예시"용 번호. 패턴마다 1게임씩, 패턴 코드 → 번호 6개.
+     * 번호 생성과 같은 알고리즘·같은 통계(핫넘버·겨울잠 번호, 최근 100회 분포)로 실제로 만들지만,
+     * 저장·발급 기록·"3번 찬 조합 제외"는 하지 않는다. (예시일 뿐이라 발급 횟수에 영향을 주면 안 된다)
+     *
+     * ⚠ 헷갈리기 쉬운 점
+     *  - 난수 씨앗을 (대상 회차, 패턴)으로 고정해서, 새로고침·기간 변경을 해도 같은 회차에서는 같은 예시가 나온다.
+     *  - 한 패턴이 실패해도(조건 불충족 등) 그 패턴만 빠지고 나머지는 나간다. 통계 카드 조회 자체를 막으면 안 되기 때문이다.
+     */
+    @Transactional(readOnly = true)
+    public Map<String, List<Integer>> exampleGames(int targetRound) {
+        Map<String, List<Integer>> result = new LinkedHashMap<>();
+        try {
+            StatRoundSnapshot snapshot = snapshotOf(targetRound);
+            DrawProfile profile = DrawProfile.from(loadHistory(snapshot.getBasisRoundNo()));
+            for (PatternCode code : PatternCode.values()) {
+                try {
+                    PatternCondition condition = loadCondition(snapshot, code);
+                    Random rng = new Random(targetRound * 100L + code.ordinal());
+                    Combo one = generator.generate(condition, 1, profile, Set.of(), rng).get(0);
+                    result.put(code.name(), one.numbers());
+                } catch (RuntimeException e) {
+                    log.warn("[패턴예시] 만들지 못함 code={} targetRound={} cause={}", code, targetRound, e.toString());
+                }
+            }
+        } catch (RuntimeException e) {
+            log.warn("[패턴예시] 통계 준비 실패 targetRound={} cause={}", targetRound, e.toString());
+        }
+        return result;
     }
 
     private StatRoundSnapshot snapshotOf(int targetRound) {

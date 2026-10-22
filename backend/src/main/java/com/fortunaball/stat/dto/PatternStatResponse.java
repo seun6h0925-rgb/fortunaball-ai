@@ -2,6 +2,7 @@ package com.fortunaball.stat.dto;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 통계 패턴 조회 응답 (API-44).
@@ -18,4 +19,16 @@ public record PatternStatResponse(
         LocalDateTime generatedAt,
         List<PatternCardResponse> patterns
 ) {
+
+    /**
+     * 카드마다 구성 예시 번호를 붙인 새 응답을 만든다. (record 는 값을 바꿀 수 없어서 새로 만든다)
+     * @param examples 패턴 코드(HOT_NUMBER 등) → 예시 번호 6개. 없는 패턴은 예시 없이 그대로 둔다.
+     */
+    public PatternStatResponse withExamples(Map<String, List<Integer>> examples) {
+        List<PatternCardResponse> withEx = patterns.stream()
+                .map(c -> new PatternCardResponse(c.code(), c.name(), c.description(), c.period(), c.hitCount(),
+                        examples.get(c.code())))
+                .toList();
+        return new PatternStatResponse(targetRound, basisRound, status, statusLabel, period, generatedAt, withEx);
+    }
 }

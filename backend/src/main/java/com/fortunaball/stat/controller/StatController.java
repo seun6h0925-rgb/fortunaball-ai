@@ -1,6 +1,7 @@
 package com.fortunaball.stat.controller;
 
 import com.fortunaball.common.response.ApiResponse;
+import com.fortunaball.generate.service.GenerateService;
 import com.fortunaball.stat.domain.StatPeriod;
 import com.fortunaball.stat.dto.NumberStatResponse;
 import com.fortunaball.stat.dto.PatternStatResponse;
@@ -35,18 +36,23 @@ public class StatController {
     private final StatAnalysisService analysisService;
     private final PrizeTrendService prizeTrendService;
     private final RegionStatService regionStatService;
+    private final GenerateService generateService;
 
     public StatController(StatQueryService statQueryService, StatAnalysisService analysisService,
-                          PrizeTrendService prizeTrendService, RegionStatService regionStatService) {
+                          PrizeTrendService prizeTrendService, RegionStatService regionStatService,
+                          GenerateService generateService) {
         this.statQueryService = statQueryService;
         this.analysisService = analysisService;
         this.prizeTrendService = prizeTrendService;
         this.regionStatService = regionStatService;
+        this.generateService = generateService;
     }
 
     @GetMapping("/patterns")
     public ApiResponse<PatternStatResponse> patterns(@RequestParam(name = "period", required = false) String period) {
-        return ApiResponse.ok(statQueryService.getPatterns(StatQueryService.parsePeriod(period)));
+        PatternStatResponse cards = statQueryService.getPatterns(StatQueryService.parsePeriod(period));
+        // 카드마다 "구성 예시" 번호를 붙인다. (번호 생성과 같은 규칙으로 서버가 만든 실제 번호, 실패한 패턴은 예시 없이 나간다)
+        return ApiResponse.ok(cards.withExamples(generateService.exampleGames(cards.targetRound())));
     }
 
     @GetMapping("/summary")
