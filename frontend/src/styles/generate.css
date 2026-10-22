@@ -1,0 +1,173 @@
+/* 번호 만들기 계열 화면(UI-02 통계 번호 생성, 이후 02B·03·03B) 공통 스타일.
+   모바일: 카드가 한 줄씩 → 태블릿: 반씩 → PC: 대상 회차 카드가 더 넓게 */
+
+.gen {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.make-tabs {
+  margin-top: 14px;
+}
+
+.gen__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+
+/* ── 대상 회차 카드 ── */
+.gen__target {
+  padding: 22px 20px;
+}
+.gen__target-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.gen__round {
+  margin-top: 2px;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+.gen__date {
+  text-align: right;
+}
+.gen__date b {
+  display: block;
+  margin-top: 2px;
+  font-size: 16px;
+}
+.gen__basis {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 16px 0 14px;
+  font-size: 15px;
+}
+.gen__explain {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--on-navy-soft);
+}
+
+/* ── 게임 수 입력: 모바일은 카드 없이 하늘색 배경 위에 바로 놓는다 (목업) ── */
+.gen__count {
+  --hint: var(--text-sub);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--text);
+}
+.gen__label {
+  font-size: 17px;
+  font-weight: 700;
+}
+.gen__field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 56px;
+  padding: 0 24px;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(5, 26, 58, 0.18);
+  transition: box-shadow var(--t-fast) var(--ease);
+}
+.gen__field:focus-within {
+  box-shadow: 0 0 0 3px #4b97ee, 0 4px 14px rgba(5, 26, 58, 0.18);
+}
+.gen__input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+}
+.gen__unit {
+  font-size: 16px;
+  color: #5b6f92;
+}
+.gen__hint {
+  margin: -4px 0 0 6px;
+  font-size: 13px;
+  color: var(--hint);
+}
+.gen__pattern {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.gen__pattern .sub {
+  color: var(--hint);
+}
+.gen__error {
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--bar-bg);
+  color: var(--danger);
+  font-size: 14px;
+  line-height: 1.5;
+}
+.spinner--sm {
+  width: 18px;
+  height: 18px;
+  border-width: 2px;
+  border-color: rgba(4, 32, 74, 0.25);
+  border-top-color: var(--on-accent);
+}
+
+/* 태블릿: 두 카드가 나란히 */
+@media (min-width: 600px) {
+  .gen__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+  }
+  .gen__count { justify-content: center; }
+  .gen__round { font-size: 48px; }
+}
+
+/* PC: 게임 수도 목업처럼 어두운 카드 안에 들어간다 */
+@media (min-width: 1024px) {
+  .gen { gap: 24px; }
+  .gen__grid {
+    grid-template-columns: minmax(0, 1.33fr) minmax(0, 1fr);
+    gap: 24px;
+  }
+  .gen__target {
+    display: flex;
+    flex-direction: column;
+    padding: 32px;
+  }
+  .gen__target-top { margin-bottom: 22px; }
+  .gen__round { font-size: 64px; }
+  .gen__date b { font-size: 20px; }
+  .gen__date .sub { font-size: 15px; }
+  .gen__basis { margin: 22px 0 18px; font-size: 16px; }
+  .gen__explain { font-size: 15px; }
+
+  .gen__count {
+    --hint: var(--on-navy-mute);
+    justify-content: center;
+    gap: 16px;
+    padding: 32px;
+    border: 1px solid var(--line-card);
+    background: var(--card-navy);
+    box-shadow: var(--shadow-card);
+    color: var(--on-navy);
+  }
+  .gen__label { font-size: 18px; }
+  .gen__field { height: 68px; box-shadow: none; }
+  .gen__input { font-size: 24px; }
+  .gen__hint { margin: -6px 0 0 6px; }
+}

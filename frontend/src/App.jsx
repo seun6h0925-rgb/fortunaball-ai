@@ -4,6 +4,7 @@ import FullMenuPage from './pages/FullMenuPage.jsx'
 import ComingSoonPage from './pages/ComingSoonPage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
 import HomePage from './pages/HomePage.jsx'
+import GeneratePage from './pages/GeneratePage.jsx'
 import { PAGES } from './app/pages.js'
 
 /**
@@ -15,7 +16,8 @@ export default function App() {
     <Routes>
       <Route element={<AppLayout />}>
         <Route path="/" element={<HomePage />} />
-        {PAGES.filter((p) => p.path !== '/').map((p) => (
+        <Route path="/generate" element={<GeneratePage />} />
+        {PAGES.filter((p) => p.path !== '/' && p.path !== '/generate').map((p) => (
           <Route key={p.path} path={p.path} element={<ComingSoonPage title={p.title} />} />
         ))}
         <Route path="/menu" element={<FullMenuPage />} />
