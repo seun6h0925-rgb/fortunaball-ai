@@ -3,6 +3,7 @@ import AppLayout from './components/layout/AppLayout.jsx'
 import FullMenuPage from './pages/FullMenuPage.jsx'
 import ComingSoonPage from './pages/ComingSoonPage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
+import HomePage from './pages/HomePage.jsx'
 import { PAGES } from './app/pages.js'
 
 /**
@@ -13,7 +14,8 @@ export default function App() {
   return (
     <Routes>
       <Route element={<AppLayout />}>
-        {PAGES.map((p) => (
+        <Route path="/" element={<HomePage />} />
+        {PAGES.filter((p) => p.path !== '/').map((p) => (
           <Route key={p.path} path={p.path} element={<ComingSoonPage title={p.title} />} />
         ))}
         <Route path="/menu" element={<FullMenuPage />} />

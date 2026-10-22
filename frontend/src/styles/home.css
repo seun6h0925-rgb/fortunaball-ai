@@ -1,0 +1,486 @@
+/* 홈(UI-01) 화면. 카드 배치는 모바일 → 태블릿 → PC 로 12칸 격자의 칸 수만 바꾼다. */
+
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.home__likebar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* ── 격자: 모바일(맨 위 두 카드는 한 줄씩, 아래 두 카드는 반씩) ── */
+.home__grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 16px;
+}
+.home__hero { grid-column: span 12; }
+.home__trend { grid-column: span 12; }
+.home__regions { grid-column: span 6; }
+.home__rookies { grid-column: span 6; }
+.home__ad { grid-column: span 12; }
+
+/* 태블릿: 위 두 카드가 반씩, 아래는 세 칸(지역·루키·광고) */
+@media (min-width: 600px) {
+  .home__hero { grid-column: span 6; }
+  .home__trend { grid-column: span 6; }
+  .home__regions { grid-column: span 4; }
+  .home__rookies { grid-column: span 4; }
+  .home__ad { grid-column: span 4; }
+  .home__ad .ad-slot {
+    height: 100%;
+    flex-direction: column;
+    gap: 12px;
+    text-align: center;
+  }
+}
+
+/* PC */
+@media (min-width: 1024px) {
+  .home { gap: 24px; }
+  .home__grid { gap: 24px; }
+  .home__hero { grid-column: span 5; }
+  .home__trend { grid-column: span 7; }
+  .home__regions { grid-column: span 6; }
+  .home__rookies { grid-column: span 6; }
+  .home__ad { grid-column: span 12; }
+  .home__ad .ad-slot {
+    height: 90px;
+    flex-direction: row;
+  }
+}
+
+/* ── 카드 공통(제목 줄) ── */
+.home-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 22px;
+}
+.home-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.home-card__title {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+.home-card__more {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  color: var(--on-navy-mute);
+  font-size: 13px;
+  transition: color var(--t-fast) var(--ease);
+}
+@media (hover: hover) {
+  .home-card__more:hover { color: #fff; }
+}
+.home-card__cap {
+  margin-top: 2px;
+  color: var(--on-navy-mute);
+  font-size: 12px;
+}
+@media (min-width: 1024px) {
+  .home-card { padding: 30px; }
+  .home-card__title { font-size: 20px; }
+}
+
+/* ── 맨 위 카드(최신 회차) ── */
+.home-hero__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.home-hero__round {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.home-hero__round svg {
+  color: var(--on-navy-mute);
+  transition: transform var(--t-fast) var(--ease);
+}
+@media (hover: hover) {
+  .home-hero__round:hover svg { transform: translateX(3px); }
+}
+.home-hero__date {
+  color: var(--on-navy-soft);
+  font-size: 13px;
+  white-space: nowrap;
+}
+.home-hero__prize {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 20px;
+}
+.home-hero__amount {
+  color: var(--gold);
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -1px;
+}
+.home-hero__change {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  padding-bottom: 6px;
+  font-size: 14px;
+}
+.home-hero__balls {
+  /* 공 7개가 카드 폭에 꼭 맞게 들어가도록, 공은 남는 폭을 똑같이 나눠 갖는다 (카드가 좁아지면 공도 같이 작아진다) */
+  container-type: inline-size;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 20px 0;
+}
+.home-hero__balls .ball {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  height: auto;
+  max-width: 46px;
+  aspect-ratio: 1 / 1;
+  font-size: min(19px, 5.2cqw);
+}
+.home-hero__plus {
+  flex: none;
+  width: 14px;
+  color: var(--on-navy-soft);
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+.home-hero__tagline {
+  margin: 16px 0 18px;
+  color: var(--on-navy-soft);
+  font-size: 15px;
+}
+.home-hero__tagline b { color: #7cc8fc; }
+.home-hero__sub {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 12px;
+}
+.home-hero__sub .btn { min-height: 48px; padding: 0 10px; font-size: 14px; }
+@media (min-width: 1024px) {
+  .home-hero__round { font-size: 32px; }
+  .home-hero__date { font-size: 14px; }
+  .home-hero__amount { font-size: 60px; }
+  .home-hero__balls { gap: 8px; margin: 28px 0; }
+  .home-hero__tagline { margin: 20px 0 22px; font-size: 16px; }
+  .home-hero__sub .btn { font-size: 15px; }
+}
+
+/* ── 역대 당첨금 추이 ── */
+.home-trend__tabs {
+  margin-top: 14px;
+  padding-bottom: 2px;
+}
+.home-trend__stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 12px;
+  color: var(--on-navy-soft);
+  font-size: 13px;
+  min-height: 20px;
+}
+.home-trend__stats b { color: #fff; }
+
+.chart {
+  position: relative;
+  flex: 1;
+  min-height: 170px;
+  margin-top: 8px;
+  user-select: none;
+}
+.chart svg {
+  position: absolute;
+  inset: 0;
+  display: block;
+  overflow: visible;
+}
+.chart--busy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.chart__grid {
+  stroke: rgba(159, 179, 214, 0.22);
+  stroke-width: 1;
+}
+.chart__ylabel,
+.chart__xlabel {
+  fill: var(--on-navy-mute);
+  font-size: 11px;
+}
+.chart__xlabel.is-last {
+  fill: #fff;
+  font-weight: 700;
+}
+.chart__line {
+  fill: none;
+  stroke: #7cc8fc;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: chart-draw 700ms var(--ease) forwards;
+  vector-effect: non-scaling-stroke;
+}
+.chart__area {
+  opacity: 0;
+  animation: chart-fade 700ms var(--ease) 150ms forwards;
+}
+@keyframes chart-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes chart-fade {
+  to { opacity: 1; }
+}
+.chart__dot {
+  stroke-width: 2;
+}
+.chart__dot--max {
+  fill: #0b2a5c;
+  stroke: #7cc8fc;
+}
+.chart__dot--active {
+  fill: #fff;
+  stroke: #2f6fc4;
+  stroke-width: 3;
+}
+.chart__tip {
+  position: absolute;
+  z-index: 1;
+  padding: 4px 11px;
+  border: 1px solid var(--line-chip);
+  border-radius: 12px;
+  background: #0b2a5c;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  transform: translate(-50%, -150%);
+  pointer-events: none;
+  transition: left var(--t-fast) var(--ease), top var(--t-fast) var(--ease);
+}
+.chart__hit {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  touch-action: pan-y;
+  cursor: crosshair;
+}
+@media (min-width: 1024px) {
+  .chart { min-height: 240px; }
+  .home-trend__stats { font-size: 14px; }
+}
+
+/* ── 최근 상승 지역: 모바일·태블릿은 세로 막대 ── */
+.regions {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-around;
+  gap: 10px;
+  height: 160px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.region {
+  --label-h: 24px; /* 막대 아래 지역 이름 칸 높이 */
+  --pct-h: 24px;   /* 막대 위 증가율 글자 칸 높이 */
+  position: relative;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  max-width: 64px;
+}
+.region__track {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  max-width: 40px;
+}
+.region__fill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--v) * 100%);
+  border-radius: 8px 8px 2px 2px;
+  background: linear-gradient(180deg, #7cc8fc, #3f7fd6);
+  transform-origin: bottom;
+  animation: bar-grow 600ms var(--ease) both;
+}
+.region__track { margin-top: var(--pct-h); }
+.region__label {
+  order: 3;
+  height: var(--label-h);
+  padding-top: 6px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.region__pct {
+  position: absolute;
+  top: calc((1 - var(--v)) * (100% - var(--label-h) - var(--pct-h)));
+  left: 50%;
+  font-size: 12px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+  transition: top 600ms var(--ease);
+}
+@keyframes bar-grow {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+.regions--busy {
+  align-items: flex-end;
+}
+.regions__sk {
+  width: 40px;
+  height: calc(var(--v) * 100%);
+}
+
+/* PC: 가로 막대 */
+@media (min-width: 1024px) {
+  .regions {
+    flex-direction: column;
+    justify-content: space-evenly;
+    gap: 16px;
+    height: auto;
+    flex: 1;
+    margin-top: 14px;
+  }
+  .region {
+    display: grid;
+    grid-template-columns: 64px minmax(0, 1fr) 56px;
+    align-items: center;
+    gap: 14px;
+    flex: none;
+    max-width: none;
+  }
+  .region__label { order: 0; height: auto; padding: 0; font-size: 15px; }
+  .region__track {
+    order: 1;
+    flex: none;
+    max-width: none;
+    height: 22px;
+    margin: 0;
+    border-radius: 999px;
+    background: rgba(124, 200, 252, 0.14);
+  }
+  .region__fill {
+    top: 0;
+    right: auto;
+    width: calc(var(--v) * 100%);
+    height: auto;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #7cc8fc, #3f7fd6);
+    transform-origin: left;
+    animation-name: bar-grow-x;
+  }
+  .region__pct {
+    position: static;
+    order: 2;
+    text-align: right;
+    font-size: 14px;
+    transform: none;
+    transition: none;
+  }
+  .regions__sk { width: 100%; height: 22px; }
+  .regions--busy { align-items: stretch; }
+}
+@keyframes bar-grow-x {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+/* ── 루키 명당 ── */
+.rookies {
+  display: flex;
+  flex-direction: column;
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.rookies > li + li {
+  border-top: 1px solid var(--line-soft);
+}
+.rookie {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 8px 0;
+  transition: opacity var(--t-fast) var(--ease);
+}
+.rookie:active { opacity: 0.7; }
+@media (hover: hover) {
+  .rookie:hover .rookie__name { color: #7cc8fc; }
+}
+.rookie__rank {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--line-chip);
+  border-radius: 50%;
+  background: #0b2a5c;
+  color: #7cc8fc;
+  font-size: 12px;
+  font-weight: 700;
+}
+.rookie__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+.rookie__name {
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color var(--t-fast) var(--ease);
+}
+.rookie__area {
+  overflow: hidden;
+  color: var(--on-navy-mute);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rookie__count {
+  flex: none;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+@media (min-width: 1024px) {
+  .rookie { min-height: 56px; gap: 14px; }
+  .rookie__name { font-size: 16px; }
+  .rookie__area { font-size: 12px; }
+  .rookie__count { font-size: 16px; }
+}

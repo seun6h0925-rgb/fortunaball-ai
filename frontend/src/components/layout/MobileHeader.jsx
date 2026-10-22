@@ -1,6 +1,7 @@
 import { Link, useLocation } from 'react-router-dom'
 import Icon from '../ui/Icon.jsx'
 import Logo from '../ui/Logo.jsx'
+import LikeButton from '../../features/like/LikeButton.jsx'
 
 // 모바일·태블릿 맨 위 줄: 로고 + (홈에서만 알림) + 메뉴. 전체 메뉴 화면에서는 메뉴 대신 닫기(X).
 export default function MobileHeader() {
@@ -11,9 +12,12 @@ export default function MobileHeader() {
       <Logo />
       <div className="mhead__right">
         {pathname === '/' && (
-          <Link to="/notices" className="icon-btn" aria-label="공지사항">
-            <Icon name="bell" size={22} />
-          </Link>
+          <>
+            <LikeButton variant="compact" />
+            <Link to="/notices" className="icon-btn" aria-label="공지사항">
+              <Icon name="bell" size={22} />
+            </Link>
+          </>
         )}
         {inMenu ? (
           <CloseMenu />
