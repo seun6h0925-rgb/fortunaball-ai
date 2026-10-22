@@ -1,6 +1,7 @@
 package com.fortunaball.store.controller;
 
 import com.fortunaball.common.response.ApiResponse;
+import com.fortunaball.store.dto.RookieStoreResponse;
 import com.fortunaball.store.dto.StoreDetailResponse;
 import com.fortunaball.store.dto.StoreListResponse;
 import com.fortunaball.store.dto.StoreNearbyResponse;
@@ -17,9 +18,10 @@ import org.springframework.web.bind.annotation.RestController;
  *  - API-12  GET /api/stores                  지역별 조회   sido, sigungu, keyword, page(0~), size(1~100, 기본 20)
  *  - API-13  GET /api/stores/nearby           내 주변 조회  lat, lng, radius(300 | 500 | 1000)
  *  - API-14  GET /api/stores/{storeId}        상세 조회
+ *  - API-66  GET /api/stores/rookies          루키 명당 조회 (홈 화면 카드)  limit(1~10, 기본 4)
  *
  * ⚠ 헷갈리기 쉬운 점
- *  - /nearby 와 /{storeId} 는 모양이 겹치지만, Spring 은 글자가 정확히 맞는 주소(/nearby)를 먼저 고른다.
+ *  - /nearby, /rookies 와 /{storeId} 는 모양이 겹치지만, Spring 은 글자가 정확히 맞는 주소(/nearby, /rookies)를 먼저 고른다.
  *  - 내 주변 조회의 위치(lat, lng)는 사용자가 위치 사용 스위치를 켜고 동의한 경우에만 화면이 보낸다.
  *    서버는 저장·로그·AI 전달을 하지 않는다. 주소창(쿼리 문자열)에 들어가므로 접속 로그에 남지 않게 주의한다
  *    (요청 주소 전체를 기록하는 로그를 추가하지 말 것).
@@ -56,6 +58,11 @@ public class StoreController {
         return ApiResponse.ok(storeQueryService.nearby(lat, lng, radius));
     }
 
+    /** API-66: 루키 명당 조회 (전국, 최근 당첨 많은 순) */
+    @GetMapping("/rookies")
+    public ApiResponse<RookieStoreResponse> rookies(@RequestParam(value = "limit", required = false) Integer limit) {
+        return ApiResponse.ok(storeQueryService.rookies(limit));
+    }
     /** API-14: 상세 조회 */
     @GetMapping("/{storeId}")
     public ApiResponse<StoreDetailResponse> detail(@PathVariable("storeId") long storeId) {

@@ -5,6 +5,7 @@ import com.fortunaball.common.exception.ErrorCode;
 import com.fortunaball.store.dto.StoreDetailResponse;
 import com.fortunaball.store.dto.StoreItem;
 import com.fortunaball.store.dto.StoreListResponse;
+import com.fortunaball.store.dto.RookieStoreResponse;
 import com.fortunaball.store.dto.StoreNearbyResponse;
 import com.fortunaball.store.geo.GeoDistance;
 import com.fortunaball.store.repository.StoreQueryRepository;
@@ -20,7 +21,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * 판매점 조회 (메뉴 7 "로또 당첨 판매점 지도"): 지역별(API-12), 내 주변(API-13), 상세(API-14),
+ * 판매점 조회 (메뉴 7 "로또 당첨 판매점 지도"): 지역별(API-12), 내 주변(API-13), 상세(API-14), 루키 명당(API-66),
  * 그리고 AI 애널리스트용 조회(searchForAi).
  *
  * ⚠ 헷갈리기 쉬운 점
@@ -41,6 +42,8 @@ public class StoreQueryService {
     static final int MAX_KEYWORD_LENGTH = 50;
     static final Set<Integer> RADII_METERS = Set.of(300, 500, 1000);
     static final int MAX_AI_LIMIT = 10;
+    static final int DEFAULT_ROOKIE_LIMIT = 4;   // 홈 화면 루키 명당 카드는 4곳
+    static final int MAX_ROOKIE_LIMIT = 10;
 
     /** 시도 이름을 저장된 짧은 이름으로 바꾸는 표. (AI 가 "서울특별시"처럼 길게 말해도 찾을 수 있게 한다) */
     private static final Map<String, String> SIDO_SHORT = Map.ofEntries(
@@ -104,6 +107,28 @@ public class StoreQueryService {
 
         int totalPages = (int) ((result.total() + pageSize - 1) / pageSize);
         return new StoreListResponse(items, pageNo, pageSize, result.total(), totalPages, baseDate,
+                repository.firstStatsRound());
+    }
+
+    /**
+     * API-66: 루키 명당 조회 (홈 화면 "루키 명당" 카드용). 전국에서 루키 기준에 맞는 판매점을
+     * 최근 1등 → 최근 2등 → 총 당첨 많은 순으로 limit 곳 준다. (AI 용 searchForAi 와 같은 저장소 조회를 쓴다)
+     *
+     * ⚠ 기준(최근 기간·1등/2등 횟수)은 설정값이라 응답에 함께 담는다. 화면이 기준을 그대로 안내하기 위해서다.
+     * ⚠ limit 은 1~10, 안 주면 4. 범위를 벗어나면 400 (조용히 잘라 주지 않는다)
+     */
+    public RookieStoreResponse rookies(Integer limit) {
+        int size = limit == null ? DEFAULT_ROOKIE_LIMIT : limit;
+        if (size < 1 || size > MAX_ROOKIE_LIMIT) {
+            throw invalid("조회 개수는 1~" + MAX_ROOKIE_LIMIT + "곳 사이로 입력해 주세요.", "limit=" + size);
+        }
+        LocalDate baseDate = repository.latestDrawDate();
+        LocalDate from = recentFrom(baseDate);
+        List<StoreRow> rows = from == null ? List.of()
+                : repository.searchRecent(null, null, null, from, rookieMinFirst, rookieMinSecond, size);
+        Map<Long, RecentCount> recent = repository.recentCounts(rows.stream().map(StoreRow::id).toList(), from);
+        List<StoreItem> items = rows.stream().map(r -> toItem(r, recent.get(r.id()), null)).toList();
+        return new RookieStoreResponse(items, baseDate, rookiePeriodMonths, rookieMinFirst, rookieMinSecond,
                 repository.firstStatsRound());
     }
 

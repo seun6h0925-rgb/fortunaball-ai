@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fortunaball.common.exception.BusinessException;
 import com.fortunaball.common.exception.ErrorCode;
 import com.fortunaball.common.exception.GlobalExceptionHandler;
+import com.fortunaball.store.dto.RookieStoreResponse;
 import com.fortunaball.store.dto.StoreDetailResponse;
 import com.fortunaball.store.dto.StoreItem;
 import com.fortunaball.store.dto.StoreListResponse;
@@ -94,5 +95,27 @@ class StoreControllerTest {
         mvc.perform(get("/api/stores/99"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.errorCode").value("COMMON-002"));
+    }
+
+    @Test
+    void rookies_주소는_상세가_아니라_루키_명당_조회로_연결된다() throws Exception {
+        when(service.rookies(4)).thenReturn(new RookieStoreResponse(List.of(item(1, null)), null, 12, 1, 5, 262));
+
+        mvc.perform(get("/api/stores/rookies").param("limit", "4"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.items[0].storeId").value(1))
+                .andExpect(jsonPath("$.data.periodMonths").value(12))
+                .andExpect(jsonPath("$.data.minSecond").value(5));
+    }
+
+    @Test
+    void 루키_명당_개수_오류는_400_공통_오류_형식() throws Exception {
+        when(service.rookies(99)).thenThrow(
+                new BusinessException(ErrorCode.INVALID_INPUT, "조회 개수는 1~10곳 사이로 입력해 주세요.", "limit=99"));
+
+        mvc.perform(get("/api/stores/rookies").param("limit", "99"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errorCode").value("COMMON-001"));
     }
 }

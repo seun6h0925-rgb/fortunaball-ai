@@ -11,11 +11,13 @@ import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fortunaball.common.exception.BusinessException;
 import com.fortunaball.common.exception.ErrorCode;
+import com.fortunaball.store.dto.RookieStoreResponse;
 import com.fortunaball.store.dto.StoreDetailResponse;
 import com.fortunaball.store.dto.StoreListResponse;
 import com.fortunaball.store.dto.StoreNearbyResponse;
@@ -249,5 +251,42 @@ class StoreQueryServiceTest {
         assertEquals(4, r.items().get(0).firstTotal());
         assertNull(r.total());
         verify(repository).searchByFirst("서울", "강남구", null, 5);
+    }
+
+    // ---- API-66 루키 명당 (홈 화면) ----
+
+    @Test
+    void 루키_명당은_루키_기준과_개수를_저장소에_넘기고_기준을_함께_돌려준다() {
+        when(repository.searchRecent(isNull(), isNull(), isNull(), eq(BASE.minusMonths(12)), eq(1), eq(5), eq(4)))
+                .thenReturn(List.of(row(1, LAT, 2, 0, 0, 1)));
+        when(repository.recentCounts(any(), eq(BASE.minusMonths(12)))).thenReturn(Map.of(1L, new RecentCount(1, 0)));
+
+        RookieStoreResponse r = service.rookies(null);   // 안 주면 4곳
+
+        assertEquals(1, r.items().size());
+        assertTrue(r.items().get(0).rookie());
+        assertEquals(1, r.items().get(0).recentFirst());
+        assertEquals(12, r.periodMonths());
+        assertEquals(1, r.minFirst());
+        assertEquals(5, r.minSecond());
+        assertEquals(BASE, r.baseDate());
+        assertEquals(262, r.statsFromRound());
+    }
+
+    @Test
+    void 루키_명당_개수가_범위를_벗어나면_400() {
+        assertEquals(ErrorCode.INVALID_INPUT, assertThrows(BusinessException.class, () -> service.rookies(0)).getErrorCode());
+        assertEquals(ErrorCode.INVALID_INPUT, assertThrows(BusinessException.class, () -> service.rookies(11)).getErrorCode());
+    }
+
+    @Test
+    void 회차_자료가_없으면_루키_명당은_빈_목록이고_저장소를_조회하지_않는다() {
+        when(repository.latestDrawDate()).thenReturn(null);
+
+        RookieStoreResponse r = service.rookies(4);
+
+        assertTrue(r.items().isEmpty());
+        assertNull(r.baseDate());
+        verify(repository, never()).searchRecent(any(), any(), any(), any(), any(), any(), anyInt());
     }
 }
