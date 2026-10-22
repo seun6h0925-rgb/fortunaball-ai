@@ -1,13 +1,16 @@
 import { useEffect } from 'react'
 import Icon from '../../components/ui/Icon.jsx'
-import { GUIDE_DETAILS } from './analystApi.js'
 import GuideContent from './GuideContent.jsx'
 
 /**
- * 사용법 창. 모바일·태블릿은 아래에서 올라오는 시트, PC 는 가운데 창.
+ * 사용법 창 (AI 애널리스트·꿈풀이 공용). 모바일·태블릿은 아래에서 올라오는 시트, PC 는 가운데 창.
+ *  - items   : 예시 목록(GuideContent 와 같은 모양)
+ *  - details : [{ title, lines[] }] 자세한 사용법. 없으면 생략한다.
+ *  - lead    : 제목 아래 안내 문장
+ *  - note    : 맨 아래 고정 안내
  * 예시를 누르면 입력창에 넣고 창을 닫는다. Esc·바깥 클릭·X 로도 닫힌다.
  */
-export default function GuideDialog({ open, onClose, onPick }) {
+export default function GuideDialog({ open, onClose, onPick, items, details, lead, note }) {
   useEffect(() => {
     if (!open) return undefined
     const onKey = (e) => {
@@ -30,25 +33,27 @@ export default function GuideDialog({ open, onClose, onPick }) {
             <Icon name="close" size={20} />
           </button>
         </div>
-        <p className="sheet__lead">예시를 누르면 입력창에 바로 들어가요. 오늘 남은 무료 횟수는 대화창 위쪽에서 볼 수 있어요.</p>
-        <GuideContent onPick={onPick} />
+        <p className="sheet__lead">{lead}</p>
+        <GuideContent items={items} onPick={onPick} />
 
-        <h3 className="sheet__sub">자세한 사용법</h3>
-        <div className="gdet">
-          {GUIDE_DETAILS.map((sec) => (
-            <section key={sec.title} className="gdet__sec">
-              <h4 className="gdet__title">{sec.title}</h4>
-              <ul className="gdet__list">
-                {sec.lines.map((line) => (
-                  <li key={line}>{line}</li>
-                ))}
-              </ul>
-            </section>
-          ))}
-        </div>
-        <p className="sheet__note">
-          통계 기반 생성 번호입니다. 참고만 하세요. 당첨을 보장하지 않습니다.
-        </p>
+        {details && (
+          <>
+            <h3 className="sheet__sub">자세한 사용법</h3>
+            <div className="gdet">
+              {details.map((sec) => (
+                <section key={sec.title} className="gdet__sec">
+                  <h4 className="gdet__title">{sec.title}</h4>
+                  <ul className="gdet__list">
+                    {sec.lines.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                </section>
+              ))}
+            </div>
+          </>
+        )}
+        <p className="sheet__note">{note}</p>
       </div>
     </div>
   )

@@ -98,6 +98,7 @@ function AiBubble({ m, onEvidence, onRegenerate, onSuggest, onOpenGuide }) {
         )}
 
         {m.footnote && <p className="bubble__foot">{m.footnote}</p>}
+        {m.charged && <p className="bubble__used">무료 횟수 1회 사용</p>}
       </div>
 
       {(m.evidence || m.canRegenerate) && (

@@ -7,7 +7,17 @@ import NoticeBox from '../components/ui/NoticeBox.jsx'
 import { confirmIssue } from '../features/generate/generateApi.js'
 import { saveIssued } from '../features/generate/generateStore.js'
 import MakeTabs from '../features/generate/MakeTabs.jsx'
-import { HISTORY_LIMIT, MAX_QUESTION, askAnalyst, fetchAiUsage } from '../features/analyst/analystApi.js'
+import {
+  GUIDE_DETAILS,
+  GUIDE_ITEMS,
+  GUIDE_LEAD,
+  GUIDE_NOTE,
+  HISTORY_LIMIT,
+  MAX_QUESTION,
+  askAnalyst,
+  fetchAiUsage,
+} from '../features/analyst/analystApi.js'
+import LimitSheet from '../features/ai/LimitSheet.jsx'
 import GuideContent from '../features/analyst/GuideContent.jsx'
 import GuideDialog from '../features/analyst/GuideDialog.jsx'
 import MessageList from '../features/analyst/MessageList.jsx'
@@ -18,7 +28,8 @@ import { CODE_LENGTH, normalizeCode } from '../lib/issueCode.js'
 const GREETING = {
   id: 0,
   kind: 'ai',
-  text: '안녕하세요. 번호를 만들거나 분석하고, 통계도 설명해 드려요. 번호는 통계 분석을 거쳐 만들고, 저는 그 결과를 설명해요.',
+  text: '안녕하세요. 번호를 만들거나 분석하고, 통계도 설명해 드려요. 번호는 통계 분석을 거쳐 만들고, 저는 그 결과를 설명해요. 처음 쓰신다면 아래 [사용 방법 보기]를 먼저 읽고 오시면 좋아요.',
+  action: 'OPEN_GUIDE',
 }
 
 // "확정할게" 같은 말은 AI 를 부르지 않고(횟수 차감 없이) 화면이 바로 발급 확정으로 처리한다.
@@ -40,10 +51,14 @@ export default function AnalystPage() {
   const [messages, setMessages] = useState([GREETING])
   const [input, setInput] = useState(() => {
     const code = normalizeCode(params.get('code') || '')
-    return code.length === CODE_LENGTH ? `${code} 분석해줘` : ''
+    if (code.length === CODE_LENGTH) return `${code} 분석해줘`
+    // 꿈풀이에서 넘어온 번호 (?numbers=3,4,8,12,26,32)
+    const nums = (params.get('numbers') || '').split(',').map((n) => n.trim()).filter((n) => /^\d{1,2}$/.test(n))
+    return nums.length === 6 ? `${nums.join(', ')} 분석해줘` : ''
   })
   const [busy, setBusy] = useState(false)
   const [guideOpen, setGuideOpen] = useState(false)
+  const [limitOpen, setLimitOpen] = useState(false)
   const [remaining, setRemaining] = useState(null) // 응답이 알려 준 최신 남은 횟수
 
   const idRef = useRef(1)
@@ -119,11 +134,15 @@ export default function AnalystPage() {
         question,
         suggestions: r.suggestions,
         action: r.action,
+        charged: Boolean(r.charged),
         footnote: r.generated ? '아직 저장 전이에요. "확정할게"라고 말씀해 주시면 발급이 확정돼요.' : null,
       })
     } catch (err) {
       // 서버가 준 안내 문구를 그대로 보여 준다. (무료 횟수 소진, AI 이용 불가, 요청이 너무 잦음 등)
-      if (err?.errorCode === 'AI-004') setRemaining(0)
+      if (err?.errorCode === 'AI-004') {
+        setRemaining(0)
+        setLimitOpen(true)
+      }
       push({ kind: 'error', text: err?.message || '답변을 만들지 못했어요. 잠시 후 다시 시도해 주세요.' })
     } finally {
       setBusy(false)
@@ -198,7 +217,7 @@ export default function AnalystPage() {
         <aside className="card card--hero ana__guide only-pc" aria-label="질문 예시">
           <h2 className="ana__guide-title">이렇게 물어보세요</h2>
           <p className="sub">누르면 입력창에 바로 들어가요</p>
-          <GuideContent showDesc={false} onPick={(t) => fillInput(t)} />
+          <GuideContent items={GUIDE_ITEMS} showDesc={false} onPick={(t) => fillInput(t)} />
           <button type="button" className="btn btn--ghost btn--block" onClick={() => setGuideOpen(true)}>
             사용법 전체 보기
           </button>
@@ -270,7 +289,7 @@ export default function AnalystPage() {
               </button>
             </form>
             <p className="chat__note">
-              통계 기반 생성 번호입니다. 참고만 하세요. 당첨을 보장하지 않습니다. 질문 1번에 무료 횟수 1회가 차감돼요. 대화는 저장되지
+              통계 기반 생성 번호입니다. 참고만 하세요. 당첨을 보장하지 않습니다. AI가 답하면 무료 횟수 1회가 차감돼요. 주제에서 벗어난 대화도 AI가 답하면 차감돼요. 대화는 저장되지
               않아요.
             </p>
           </div>
@@ -279,7 +298,16 @@ export default function AnalystPage() {
 
       <AdSlot />
       <NoticeBox />
-      <GuideDialog open={guideOpen} onClose={() => setGuideOpen(false)} onPick={(t) => fillInput(t)} />
+      <GuideDialog
+        open={guideOpen}
+        onClose={() => setGuideOpen(false)}
+        onPick={(t) => fillInput(t)}
+        items={GUIDE_ITEMS}
+        details={GUIDE_DETAILS}
+        lead={GUIDE_LEAD}
+        note={GUIDE_NOTE}
+      />
+      <LimitSheet open={limitOpen} onClose={() => setLimitOpen(false)} />
     </div>
   )
 }

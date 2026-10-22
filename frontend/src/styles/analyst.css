@@ -198,6 +198,12 @@
   line-height: 1.65;
   color: var(--on-navy-soft);
 }
+.bubble__used {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--on-navy-soft);
+  opacity: 0.8;
+}
 .bubble--typing {
   display: flex;
   align-items: center;

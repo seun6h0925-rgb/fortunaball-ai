@@ -1,0 +1,214 @@
+/* ===== AI 로또 꿈풀이 (UI-06, 06B, 06C) =====
+   대화창 틀(.chat, .msg, .bubble ...)은 analyst.css 와 같이 쓰고, 여기에는 꿈풀이에만 있는 것만 둔다.
+   - .dtag     : 작은 이름표 (안내 / 한국 전통 / 해외 전통)
+   - .dsym     : 꿈에서 찾은 상징 카드
+   - .dnums    : 풀이 번호와 출처 이름
+   - .dream__* : 입력 줄 아래 글자 수·안내
+   - .sheet--limit, .limit__* : 오늘 무료 횟수를 다 쓴 뒤 열리는 안내 창 (AI 애널리스트도 같이 쓴다) */
+
+.dtag {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  background: rgba(255, 255, 255, 0.14);
+  color: var(--on-navy);
+}
+.dtag--kr {
+  background: rgba(249, 229, 151, 0.18);
+  color: #f9e597;
+}
+.dtag--gl {
+  background: rgba(124, 200, 252, 0.16);
+  color: var(--accent-solid);
+}
+.bubble > .dtag {
+  margin-bottom: 8px;
+}
+
+.dream .chat__title,
+.dream .chat__sub {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dream .chat__title {
+  font-size: 16px;
+}
+.dream .chat__titles {
+  min-width: 0;
+  flex: 1;
+}
+.dream__interp,
+.dream__q {
+  margin-top: 10px;
+}
+
+/* 상징 카드 */
+.dsym {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+}
+.dsym__card {
+  padding: 10px 12px;
+  border: 1px solid var(--line-card);
+  border-radius: 14px;
+  background: rgba(3, 14, 34, 0.35);
+}
+.dsym__name {
+  font-size: 15px;
+  color: #fff;
+}
+.dsym__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 6px;
+}
+.dsym__row .dtag {
+  flex: none;
+  margin-top: 2px;
+}
+.dsym__text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--on-navy-soft);
+  word-break: keep-all;
+}
+
+/* 풀이 번호 */
+.dnums {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 14px;
+}
+.dnums__title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--on-navy-mute);
+}
+.dnums__game {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.dnums__name {
+  flex: none;
+  min-width: 14px;
+  padding-top: 8px;
+  font-size: 14px;
+  color: var(--on-navy-mute);
+}
+.dnums__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 6px;
+}
+.dnum {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: clamp(40px, 11.6vw, 46px);
+}
+.dnum .ball {
+  --s: clamp(30px, 8.6vw, 38px);
+}
+.dnum__origin {
+  font-size: 11px;
+  line-height: 1.25;
+  text-align: center;
+  color: var(--on-navy-mute);
+  word-break: keep-all;
+}
+.dnum__origin.is-stat {
+  color: var(--accent-solid);
+  font-weight: 700;
+}
+
+/* 입력 줄 아래 */
+.dream__meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--on-navy-mute);
+}
+.dream__count {
+  flex: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── 무료 횟수 소진 안내 창 (모바일은 아래 시트, PC 는 가운데 창: .sheet 공용) ── */
+.sheet--limit .sheet__box {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.sheet--limit .sheet__title {
+  font-size: 20px;
+}
+.limit__btns {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.limit__ghost {
+  min-height: 48px;
+}
+.limit__soon {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px dashed var(--line-chip);
+  border-radius: 14px;
+  font-size: 14px;
+  color: var(--on-navy-mute);
+}
+.limit__tag {
+  flex: none;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--on-navy-soft);
+}
+.limit__close {
+  align-self: center;
+  margin-top: 12px;
+  padding: 8px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--on-navy-mute);
+  font-size: 14px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (max-width: 599px) {
+  /* 좁은 화면: 제목이 잘리지 않게 머리줄의 아이콘을 숨긴다 */
+  .dream .chat__head .avatar--lg {
+    display: none;
+  }
+}
+@media (min-width: 600px) {
+  .dnum {
+    width: 50px;
+  }
+  .dnum .ball {
+    --s: 40px;
+  }
+}
+@media (min-width: 1024px) {
+  .sheet--limit .sheet__box {
+    width: min(100%, 440px);
+  }
+}
