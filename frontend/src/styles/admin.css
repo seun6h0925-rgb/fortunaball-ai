@@ -66,3 +66,41 @@
 .adtable th { padding: 8px 6px; text-align: left; font-weight: 400; font-size: 12.5px; color: var(--on-navy-mute); border-bottom: 1px solid var(--line-soft); }
 .adtable td { padding: 11px 6px; border-bottom: 1px solid var(--line-soft); }
 .adempty { padding: 18px 0; font-size: 14px; color: var(--on-navy-soft); }
+
+/* 회차 데이터(AD-03) */
+.adpanel--wide { margin-bottom: 18px; }
+.adpanel--soft { background: rgba(5, 26, 58, 0.85); }
+.adpanel__sub { font-size: 15px; margin-bottom: 8px; }
+.adtools { display: flex; gap: 10px; }
+.adtools__in { height: 40px; padding: 0 16px; border: 0; border-radius: 999px; background: #fff; font-size: 14px; color: var(--text); }
+.adlist__row { display: grid; grid-template-columns: 64px 52px 290px minmax(0, 1fr) 76px 84px; align-items: center; gap: 12px; padding: 14px 4px; border-bottom: 1px solid var(--line-soft); }
+.adlist__balls { display: flex; align-items: center; gap: 4px; }
+.adlist__dim { font-size: 13px; color: var(--on-navy-mute); }
+.adlist__ranks { display: flex; gap: 5px; flex-wrap: wrap; }
+.adchk { display: inline-flex; align-items: center; gap: 3px; padding: 3px 8px; border-radius: 999px; background: rgba(124, 200, 252, 0.16); font-size: 11.5px; color: var(--chip-text); }
+.adchk.is-off { opacity: 0.4; }
+.adbtn { padding: 8px 16px; border: 1px solid var(--line-chip); border-radius: 999px; background: transparent; font-size: 13.5px; color: var(--on-navy); }
+.adbtn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); }
+.adbtn:disabled { opacity: 0.5; cursor: default; }
+.adnote { margin: 0 0 14px; font-size: 13.5px; line-height: 1.6; color: var(--on-navy-soft); }
+.adnote--s { margin: 14px 0 0; font-size: 12.5px; color: var(--on-navy-mute); }
+.adtable__r { text-align: right; }
+.admiss { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* 발급 기록(AD-04) */
+.adfilter { display: flex; gap: 12px; align-items: center; padding: 16px 18px; margin-bottom: 18px; }
+.adfilter__code { width: 240px; }
+.adfilter__guest { width: 240px; }
+.adfilter__btn { height: 40px; padding: 0 22px; border: 0; border-radius: 999px; background: var(--accent); font-size: 14px; font-weight: 700; color: var(--on-accent); }
+.adsplit { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr); gap: 18px; align-items: start; }
+.adtable--click tbody tr { cursor: pointer; }
+.adtable--click tbody tr:hover, .adtable--click tbody tr.is-sel { background: rgba(255, 255, 255, 0.07); }
+.addetail__code { font-size: 14px; }
+.addetail__meta { margin: 4px 0 14px; font-size: 13px; color: var(--on-navy-soft); }
+.addetail__games { display: grid; gap: 10px; margin-bottom: 14px; }
+.addetail__game { display: flex; align-items: center; gap: 4px; }
+.addetail__game > span { width: 22px; font-size: 13px; color: var(--on-navy-soft); }
+
+/* 번호 공은 칸이 좁아도 찌그러지지 않게 크기를 고정한다 */
+.addetail__game .ball, .adlist__balls .ball, .adballs .ball { flex: none; aspect-ratio: 1; }
+.addetail__game { flex-wrap: wrap; }
