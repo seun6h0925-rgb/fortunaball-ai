@@ -17,6 +17,7 @@ import './styles/dream.css'
 import './styles/stats.css'
 import './styles/roundnav.css'
 import './styles/draws.css'
+import './styles/winners.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
