@@ -1,0 +1,33 @@
+/* 익명 당첨 인증 등록(UI-10). 모바일·태블릿: 한 줄씩 / PC: 왼쪽 입력, 오른쪽 순서 */
+.vfy { display: flex; flex-direction: column; gap: 16px; }
+.vfy__grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.vfy__form, .vfy__done, .vfy__steps { display: flex; flex-direction: column; gap: 16px; padding: 20px 18px; }
+.vfy__title { font-size: 19px; font-weight: 700; }
+.vfy__field { display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: var(--on-navy-soft); }
+.vfy__file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.vfy__drop {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  min-height: 140px; padding: 16px; cursor: pointer; color: var(--on-navy);
+  border: 1.5px dashed rgba(159, 179, 214, 0.5); border-radius: 16px; background: rgba(255, 255, 255, 0.05);
+}
+.vfy__drop img { max-width: 100%; max-height: 260px; border-radius: 10px; }
+.vfy__drop small { color: var(--on-navy-mute); font-size: 13px; }
+.vfy__text { resize: vertical; min-height: 84px; font-size: 16px; line-height: 1.5; }
+.vfy__count { align-self: flex-end; color: var(--on-navy-mute); }
+.vfy__consent { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.55; color: var(--on-navy); }
+.vfy__consent input { width: 20px; height: 20px; flex: none; margin-top: 2px; accent-color: #7cc8fc; }
+.vfy__done p { font-size: 15px; line-height: 1.6; color: var(--on-navy); }
+.vfy__done .chip { align-self: flex-start; }
+.vfy__steps ol { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
+.vfy__steps li { display: flex; gap: 12px; align-items: flex-start; }
+.vfy__steps li > b {
+  display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14); color: var(--gold); font-size: 14px;
+}
+.vfy__steps strong { font-size: 15px; }
+.vfy__steps p { margin-top: 2px; font-size: 13px; line-height: 1.55; color: var(--on-navy-soft); }
+@media (min-width: 1024px) {
+  .vfy { gap: 24px; }
+  .vfy__grid { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 24px; }
+  .vfy__form, .vfy__done, .vfy__steps { padding: 26px 28px; }
+}
