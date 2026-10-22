@@ -3,20 +3,15 @@ import { Link, useNavigate } from 'react-router-dom'
 import PageHeader from '../components/layout/PageHeader.jsx'
 import AdSlot from '../components/ui/AdSlot.jsx'
 import Icon from '../components/ui/Icon.jsx'
-import LottoBall from '../components/ui/LottoBall.jsx'
 import NoticeBox from '../components/ui/NoticeBox.jsx'
 import { EmptyState } from '../components/ui/StateView.jsx'
 import LikeButton from '../features/like/LikeButton.jsx'
 import ShareButton from '../features/like/ShareButton.jsx'
+import GameList from '../features/generate/GameList.jsx'
 import MakeTabs from '../features/generate/MakeTabs.jsx'
 import { confirmIssue, generateNumbers } from '../features/generate/generateApi.js'
 import { clearGenerated, loadGenerated, saveGenerated, saveIssued } from '../features/generate/generateStore.js'
 import usePageTitle from '../hooks/usePageTitle.js'
-
-/** 게임 이름: A, B, C ... Z, 그 뒤로는 27, 28 ... (게임은 최대 50개까지 만들 수 있다) */
-function gameLabel(index) {
-  return index < 26 ? `게임 ${String.fromCharCode(65 + index)}` : `게임 ${index + 1}`
-}
 
 /**
  * 번호 생성 결과(UI-03).
@@ -107,24 +102,7 @@ export default function ResultPage() {
       </PageHeader>
 
       <div className="res__grid">
-        <section className="card res__games" aria-label="생성된 번호">
-          <div className="res__head only-pc">
-            <h2>생성된 번호</h2>
-            <span className="sub">{summary}</span>
-          </div>
-          <ul className="res__list">
-            {games.map((numbers, i) => (
-              <li key={i} className="res__game">
-                <span className="res__name">{gameLabel(i)}</span>
-                <div className="res__balls" aria-label={`${gameLabel(i)} ${numbers.join(', ')}`}>
-                  {numbers.map((n) => (
-                    <LottoBall key={n} n={n} />
-                  ))}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <GameList games={games} meta={summary} />
 
         <aside className="res__side">
           <button type="button" className="btn btn--cta btn--block" onClick={onIssue} disabled={!!busy}>

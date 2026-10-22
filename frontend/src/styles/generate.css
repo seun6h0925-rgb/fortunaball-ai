@@ -299,3 +299,74 @@
     border-top: 1px solid rgba(159, 179, 214, 0.28);
   }
 }
+
+/* ───────── 번호 발급 완료(UI-03B) ─────────
+   모바일: 번호 카드 → 변경 안내 → 발급 코드 카드 → 버튼들 / PC: 번호 카드 + (발급 코드 → 변경 안내 → 버튼들) 한 카드 */
+.iss__code {
+  order: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--line-card);
+  background: var(--card-navy);
+  box-shadow: var(--shadow-card);
+  color: var(--on-navy);
+}
+.iss__code-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.iss__code-text {
+  min-width: 0;
+  font-size: 19px;
+  letter-spacing: 0.02em;
+  white-space: nowrap; /* 코드가 두 줄로 꺾이지 않게 */
+  font-variant-numeric: tabular-nums;
+}
+.iss__copy {
+  min-height: 40px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+.iss__code-hint {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--on-navy-mute);
+}
+/* 번호가 바뀐 게임이 있을 때만 나오는 밝은 안내 상자 */
+.iss__replaced {
+  order: 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #eef5ff;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.6;
+}
+.iss__replaced b {
+  display: block;
+  margin-bottom: 2px;
+  font-weight: 700;
+}
+.iss__side > .btn--cta,
+.iss__side > .res__row,
+.iss__side > .res__temp {
+  order: 2;
+}
+
+@media (min-width: 1024px) {
+  /* PC: 발급 코드는 카드 안의 첫 칸이라 카드 모양을 걷어 낸다 */
+  .iss__code {
+    order: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+  }
+  .iss__code-text { font-size: 26px; letter-spacing: 0.04em; }
+  .iss__replaced { order: 1; }
+}
