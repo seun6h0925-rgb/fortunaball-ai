@@ -27,6 +27,7 @@ import AdminLoginPage from './pages/admin/AdminLoginPage.jsx'
 import AdminDashboardPage from './pages/admin/AdminDashboardPage.jsx'
 import AdminDrawsPage from './pages/admin/AdminDrawsPage.jsx'
 import AdminIssuesPage from './pages/admin/AdminIssuesPage.jsx'
+import AdminVerifyPage from './pages/admin/AdminVerifyPage.jsx'
 import AdminSoonPage from './pages/admin/AdminSoonPage.jsx'
 import { ADMIN_MENU } from './features/admin/adminMenu.js'
 import { PAGES } from './app/pages.js'
@@ -35,7 +36,7 @@ import { PAGES } from './app/pages.js'
 const BUILT = new Set(['/', '/generate', '/generate/patterns', '/generate/result', '/generate/issued', '/issues', '/analyst', '/dream', '/stats', '/draws', '/winners', '/verify', '/map', '/payout', '/guide/payout', '/about', '/notices', '/notices/:id'])
 
 // 진짜 화면이 연결된 관리자 주소 (대시보드부터 하나씩 늘어난다)
-const ADMIN_BUILT = new Set(['/admin', '/admin/draws', '/admin/issues'])
+const ADMIN_BUILT = new Set(['/admin', '/admin/draws', '/admin/issues', '/admin/verify'])
 
 /**
  * 화면 주소 표. 실제 화면을 만들 때마다 이 표에서 element 만 바꿔 끼운다.
@@ -51,6 +52,7 @@ export default function App() {
           <Route index element={<AdminDashboardPage />} />
           <Route path="draws" element={<AdminDrawsPage />} />
           <Route path="issues" element={<AdminIssuesPage />} />
+          <Route path="verify" element={<AdminVerifyPage />} />
           {ADMIN_MENU.flatMap((g) => g.items).filter((i) => !ADMIN_BUILT.has(i.path)).map((i) => (
             <Route key={i.path} path={i.path.replace('/admin', '').replace(/^\//, '') || undefined} index={i.path === '/admin'} element={<AdminSoonPage />} />
           ))}

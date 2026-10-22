@@ -104,3 +104,8 @@
 /* 번호 공은 칸이 좁아도 찌그러지지 않게 크기를 고정한다 */
 .addetail__game .ball, .adlist__balls .ball, .adballs .ball { flex: none; aspect-ratio: 1; }
 .addetail__game { flex-wrap: wrap; }
+
+/* 당첨 검증(AD-05) */
+.adtabs { display: flex; gap: 8px; margin-bottom: 14px; }
+.adtabs__b { padding: 8px 18px; border: 1px solid var(--line-chip); border-radius: 999px; background: transparent; font-size: 14px; color: var(--on-navy-soft); }
+.adtabs__b.is-on { border-color: transparent; background: var(--accent); font-weight: 700; color: var(--on-accent); }
