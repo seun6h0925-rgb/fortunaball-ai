@@ -128,11 +128,55 @@ class AnalystServiceTest {
         agentReturns(Outcome.ANSWER, "만들었어요!",
                 List.of(new ToolResult("generate_numbers", evidence(), null, generated())), generated());
 
-        AnalystResponse r = service.answer(ask("그 회차로 번호 만들어줘"), GUEST, IP);
+        AnalystResponse r = service.answer(ask("그 회차로 번호 3게임 만들어줘"), GUEST, IP);
 
         assertEquals("NUMBER_GENERATION", r.questionType());
         assertEquals("tok", r.generated().confirmToken());
         assertTrue(r.historyText().contains("[만든 번호] 게임1: 7, 10, 20, 30, 40, 45;"));
+    }
+
+    @Test
+    void 좋은_번호를_처음_부탁하면_일반_안내로_답하고_거듭_부탁하면_짧게_답한다() {
+        agentReturns(Outcome.ANSWER, "최근 100회 통계로 뽑았어요. 단정할 수는 없어요.",
+                List.of(new ToolResult("generate_numbers", evidence(), null, generated())), generated());
+
+        AnalystResponse first = service.answer(ask("최대한 좋은 숫자로 뽑아줘"), GUEST, IP);
+        assertTrue(first.answer().contains("통계로 뽑았어요"));
+
+        List<ChatTurn> history = List.of(new ChatTurn("user", "최대한 좋은 숫자로 뽑아줘"), new ChatTurn("assistant", first.answer()));
+        AnalystResponse again = service.answer(
+                new AnalystRequest("아 제발 좀 제일 좋은 번호로 줘! 네가 생각하는 좋은 번호!", null, null, null, history), GUEST, IP);
+
+        assertEquals(AnalystService.INSISTENT_BEST_REPLY, again.answer());
+        assertTrue(again.answer().contains("당첨을 보장하지는 못해요"));
+        assertEquals("tok", again.generated().confirmToken());   // 번호는 그대로 만들어 준다
+        assertTrue(again.charged());
+    }
+
+    @Test
+    void 번호를_만들어_달라는데_게임_수가_없으면_먼저_묻고_차감하지_않는다() {
+        AnalystResponse r = service.answer(ask("이번 주 번호 만들어줘"), GUEST, IP);
+
+        assertEquals("ASK_GAME_COUNT", r.policyCode());
+        assertEquals(AnalystService.ASK_GAME_COUNT, r.message());
+        assertEquals(AnalystService.GAME_COUNT_SUGGESTIONS, r.suggestions());
+        assertFalse(r.charged());
+        verify(gateway, never()).open(any(), anyString(), anyString());
+    }
+
+    @Test
+    void 게임_수를_말했거나_방금_물었거나_이미_번호를_만든_대화면_다시_묻지_않는다() {
+        agentReturns(Outcome.ANSWER, "만들었어요!",
+                List.of(new ToolResult("generate_numbers", evidence(), null, generated())), generated());
+
+        assertNull(service.answer(ask("번호 세 게임 만들어줘"), GUEST, IP).policyCode());
+        assertNull(service.answer(ask("번호 3게임 만들어줘"), GUEST, IP).policyCode());
+
+        List<ChatTurn> asked = List.of(new ChatTurn("user", "이번 주 번호 만들어줘"), new ChatTurn("assistant", AnalystService.ASK_GAME_COUNT));
+        assertNull(service.answer(new AnalystRequest("번호 만들어줘", null, null, null, asked), GUEST, IP).policyCode());
+
+        List<ChatTurn> made = List.of(new ChatTurn("user", "번호 3게임 만들어줘"), new ChatTurn("assistant", "만들었어요\n[만든 번호] 게임1: 1, 2, 3, 4, 5, 6;"));
+        assertNull(service.answer(new AnalystRequest("번호 만들어줘", null, null, null, made), GUEST, IP).policyCode());
     }
 
     @Test

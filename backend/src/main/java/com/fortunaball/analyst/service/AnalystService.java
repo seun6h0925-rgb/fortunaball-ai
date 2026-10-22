@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.springframework.stereotype.Service;
 
 /**
@@ -38,6 +39,7 @@ import org.springframework.stereotype.Service;
  *     ⚠ 주제 이탈 키워드(OFF_TOPIC_ANALYST, OFF_TOPIC_MAP)에 걸려도 여기서 막지 않는다. 인사·잡담인지 아닌지는 AI 가 판단한다.
  *  2-1. 짧은 인사·감사·사용법 질문("안녕", "요~ 하이", "고마워", "사용법 알려줘")은 고정 문구로 응답. AI 호출·차감 없음
  *     ⚠ 고정 문구는 짧은 인사·감사, 사용법 질문, 정책 차단, 주제 이탈 안내에만 쓴다. (모두 차감 없음) 그 밖의 말은 AI 가 대화로 받고 1회를 쓴다.
+ *  2-2. 번호를 만들어 달라는데 게임 수가 없으면 "몇 게임으로 만들어 드릴까요?"를 한 번 묻는다. 고정 문구, 차감 없음
  *  3. 무료 횟수 1회 차감 → AnalystAgent: AI 가 질문과 대화를 보고 조회 도구를 골라 쓰며 답한다
  *     - 가벼운 인사·잡담이면 AI 가 짧게 받아 주고 횟수를 쓴다. (AI 가 쓴 글은 모두 1회. 글을 못 쓴 경우만 돌려준다)
  *     - 도와드릴 수 없는 이야기라고 AI 가 판단하면 고정 문구(3개 번갈아)로 응답하고 횟수를 돌려준다
@@ -58,6 +60,15 @@ public class AnalystService {
     static final String POLICY_OFF_TOPIC = "OFF_TOPIC_ANALYST";
     static final String POLICY_OFF_TOPIC_MAP = "OFF_TOPIC_MAP";
     static final int MAX_SMALL_TALK_CHARS = 200;
+    /** "좋은 번호/숫자로 줘", "네가 생각하는 …" 같은 표현. 처음엔 일반 안내로 답하고, 거듭 말하면 짧게 답한다. (당첨 보장 요구는 정책 키워드가 먼저 막는다) */
+    private static final Pattern BEST_WORDS = Pattern.compile(
+            "좋은\\s*(번호|숫자|조합)|(제일|가장|최대한|최고)\\s*좋|최고의\\s*(번호|숫자)|(네|니|너)가\\s*생각하는");
+    static final String INSISTENT_BEST_REPLY = "네, 제가 생각하기에 좋은 예측 번호로 추천드릴게요. 당첨을 보장하지는 못해요.";
+    /** 번호를 만들어 달라는데 게임 수가 없으면 먼저 한 번 묻는다. (고정 문구, 차감 없음) 한국어 숫자("세 게임")도 게임 수로 본다. */
+    static final String POLICY_ASK_GAME_COUNT = "ASK_GAME_COUNT";
+    static final String ASK_GAME_COUNT = "몇 게임으로 만들어 드릴까요? 아래에서 고르시거나 \"3게임\"처럼 말씀해 주세요.";
+    static final List<String> GAME_COUNT_SUGGESTIONS = List.of("1게임", "3게임", "5게임");
+    private static final Pattern WORD_GAME_COUNT = Pattern.compile("(한|두|세|네|다섯|여섯|일곱|여덟|아홉|열)\\s*(게임|세트|줄|장|조합)|하나만|한\\s*개만");
     static final String NOTICE = "통계 기반 생성 번호입니다. 참고만 하세요. 당첨을 보장하지 않습니다.";
 
     private final QuestionParser parser;
@@ -102,6 +113,13 @@ public class AnalystService {
                     reply.suggestions(), reply.action());
         }
 
+        // 2-2) 번호를 만들어 달라는데 게임 수가 없으면 먼저 한 번 묻는다. (고정 문구, 차감 없음)
+        if (!mapContext && parsed.type() == QuestionType.NUMBER_GENERATION && parsed.gameCount() == null
+                && !WORD_GAME_COUNT.matcher(question).find() && shouldAskGameCount(history)) {
+            return fixed(QuestionType.NUMBER_GENERATION.name(), POLICY_ASK_GAME_COUNT, ASK_GAME_COUNT, guest, clientIp,
+                    GAME_COUNT_SUGGESTIONS, null);
+        }
+
         // 3) 여기서 무료 횟수가 1회 차감된다. AI 호출이 실패하면 AiSession 이 자동으로 환불한다.
         AiSession session = gateway.open(AiFeature.ANALYST, guest.value(), clientIp);
         AnalystAgent.Result result = agent.run(session, history, question, guest, clientIp, askContext(mapContext, request));
@@ -138,6 +156,10 @@ public class AnalystService {
         }
 
         GenerateResponse generated = result.generated();
+        // "제일 좋은 번호로 줘!"를 거듭 요청하면(이미 한 번 물었는데 또 묻는 경우) 길게 설명하지 않고 짧게 답한다.
+        if (result.outcome() == Outcome.ANSWER && generated != null && isInsistentBest(question, history)) {
+            text = INSISTENT_BEST_REPLY;
+        }
         return new AnalystResponse(typeOf(generated, evidence), null, null, text, generated,
                 evidence == null ? null : new AnalystResponse.Evidence(evidence.basis(), evidence.items()),
                 evidence == null ? List.of() : evidence.references(), NOTICE, remaining(guest, clientIp),
@@ -226,6 +248,26 @@ public class AnalystService {
                     "질문 길이 오류: " + question.length());
         }
         return question;
+    }
+
+    /**
+     * 게임 수를 물어볼지. 이미 번호를 만든 대화이거나("다시 뽑아줘"), 방금 물어본 직후라면 다시 묻지 않는다.
+     */
+    static boolean shouldAskGameCount(List<ChatTurn> history) {
+        boolean alreadyGenerated = history.stream()
+                .anyMatch(t -> ChatTurn.ASSISTANT.equals(t.role()) && t.content().contains("[만든 번호]"));
+        boolean justAsked = !history.isEmpty()
+                && ChatTurn.ASSISTANT.equals(history.get(history.size() - 1).role())
+                && history.get(history.size() - 1).content().equals(ASK_GAME_COUNT);
+        return !alreadyGenerated && !justAsked;
+    }
+
+    /** 지금 질문이 "좋은 번호" 요청이고, 앞선 대화에서도 사용자가 같은 요청을 한 적이 있으면 true */
+    static boolean isInsistentBest(String question, List<ChatTurn> history) {
+        if (!BEST_WORDS.matcher(question).find()) {
+            return false;
+        }
+        return history.stream().anyMatch(t -> ChatTurn.USER.equals(t.role()) && BEST_WORDS.matcher(t.content()).find());
     }
 
     private static boolean validateContext(String context) {
