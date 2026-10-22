@@ -50,7 +50,8 @@ public class AnalystSmallTalk {
      */
     private static final List<String> GREETING_STEMS = List.of(
             "처음뵙겠습니다", "안녕하십니까", "안녕하셔요", "안녕하세요", "여보세요", "반갑습니다", "반가워요", "반가워",
-            "안녕", "안뇽", "하이", "헬로", "hello", "하세요", "습니다", "요");
+            "안녕", "안뇽", "하이루", "하이", "하잉", "헬로우", "헬로", "hello", "와썹", "와섭", "왓섭", "방가", "굿모닝", "굿나잇", "굿밤",
+            "좋은아침", "좋은저녁", "잘지내", "오랜만", "수고", "잘자", "잘가", "바이", "빠이", "ㅎㅇ", "ㅂㅇ", "하세요", "습니다", "요");
     private static final List<String> THANKS_STEMS = List.of(
             "고맙습니다", "감사합니다", "감사드려요", "도움이됐", "도움됐", "고마워", "감사해", "감사", "땡큐", "thankyou", "thanks",
             "정말", "진짜", "너무", "많이", "요", "어요", "습니다", "합니다", "해요", "드려요");
@@ -119,7 +120,8 @@ public class AnalystSmallTalk {
         if (THANKS.contains(text)) {
             return Optional.of(Kind.THANKS);
         }
-        if (!hasLottoInput && onlyStems(text, GREETING_STEMS, "안녕", "안뇽", "하이", "헬로", "hello", "반가", "반갑", "여보세요", "뵙겠")) {
+        if (!hasLottoInput && onlyStems(text, GREETING_STEMS, "안녕", "안뇽", "하이", "하잉", "헬로", "hello", "와썹", "와섭", "왓섭", "방가", "굿모닝", "굿나잇", "굿밤", "좋은아침",
+                "좋은저녁", "잘지내", "오랜만", "수고", "잘자", "잘가", "바이", "빠이", "ㅎㅇ", "ㅂㅇ", "반가", "반갑", "여보세요", "뵙겠")) {
             return Optional.of(Kind.GREETING);
         }
         if (!hasLottoInput && onlyStems(text, THANKS_STEMS, "고마", "고맙", "감사", "땡큐", "thank", "도움")) {

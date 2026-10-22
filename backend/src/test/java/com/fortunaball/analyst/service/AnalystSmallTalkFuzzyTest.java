@@ -15,6 +15,10 @@ class AnalystSmallTalkFuzzyTest {
         assertThat(talk.detect("요~ 하이", false)).contains(Kind.GREETING);
         assertThat(talk.detect("안녕하세요 반갑습니다!", false)).contains(Kind.GREETING);
         assertThat(talk.detect("안녕 ㅎㅎ", false)).contains(Kind.GREETING);
+        assertThat(talk.detect("와썹~", false)).contains(Kind.GREETING);
+        assertThat(talk.detect("ㅎㅇ", false)).contains(Kind.GREETING);
+        assertThat(talk.detect("방가방가", false)).contains(Kind.GREETING);
+        assertThat(talk.detect("굿모닝!", false)).contains(Kind.GREETING);
     }
 
     @Test
