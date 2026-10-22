@@ -15,10 +15,11 @@ import StatsPage from './pages/StatsPage.jsx'
 import DrawsPage from './pages/DrawsPage.jsx'
 import WinnersPage from './pages/WinnersPage.jsx'
 import VerifyPage from './pages/VerifyPage.jsx'
+import MapPage from './pages/MapPage.jsx'
 import { PAGES } from './app/pages.js'
 
 // 진짜 화면이 연결된 주소. 여기에 없는 주소는 아래에서 "준비 중" 화면으로 연결된다.
-const BUILT = new Set(['/', '/generate', '/generate/patterns', '/generate/result', '/generate/issued', '/issues', '/analyst', '/dream', '/stats', '/draws', '/winners', '/verify'])
+const BUILT = new Set(['/', '/generate', '/generate/patterns', '/generate/result', '/generate/issued', '/issues', '/analyst', '/dream', '/stats', '/draws', '/winners', '/verify', '/map'])
 
 /**
  * 화면 주소 표. 실제 화면을 만들 때마다 이 표에서 element 만 바꿔 끼운다.
@@ -40,6 +41,7 @@ export default function App() {
         <Route path="/draws" element={<DrawsPage />} />
         <Route path="/winners" element={<WinnersPage />} />
         <Route path="/verify" element={<VerifyPage />} />
+        <Route path="/map" element={<MapPage />} />
         {PAGES.filter((p) => !BUILT.has(p.path)).map((p) => (
           <Route key={p.path} path={p.path} element={<ComingSoonPage title={p.title} />} />
         ))}

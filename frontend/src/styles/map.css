@@ -1,0 +1,132 @@
+/* 로또 명당 지도(UI-11). 모바일·태블릿: 한 줄씩 / PC: 왼쪽 지도, 오른쪽 목록·루키 */
+.mapp { display: flex; flex-direction: column; gap: 16px; }
+.mapp__search { display: flex; gap: 10px; }
+.mapp__input {
+  flex: 1; min-width: 0; box-sizing: border-box; padding: 14px 18px; border: 0; border-radius: 999px;
+  background: #fff; color: #0a1f44; font-size: 16px; outline: 0;
+}
+.mapp__input::placeholder { color: #6b7d9c; }
+.mapp__chips { display: flex; gap: 8px; align-items: center; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+.mapp__chips::-webkit-scrollbar { display: none; }
+.mapp__chips .chip, .mapp__switch { flex: none; }
+.mapp__switch {
+  display: inline-flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 8px 0 16px; cursor: pointer;
+  border: 0; border-radius: 999px; background: linear-gradient(180deg, #9fd4ff, #5fb0f5); color: #06234d; font-size: 15px; font-weight: 700;
+}
+.mapp__knob { position: relative; width: 44px; height: 26px; border-radius: 999px; background: rgba(6, 35, 77, 0.35); }
+.mapp__knob::after { content: ''; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform 0.15s; }
+.mapp__knob.is-on { background: #06234d; }
+.mapp__knob.is-on::after { transform: translateX(18px); }
+.mapp__note { font-size: 13px; color: var(--on-navy-soft); }
+/* 모바일·태블릿: AI → 지도 → 목록들 한 줄씩 / PC: 왼쪽 AI·목록, 오른쪽 지도(스크롤해도 화면에 고정) */
+.mapp__grid { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-areas: "ai" "map" "lists"; gap: 16px; align-items: start; }
+.mapp__ai { grid-area: ai; min-width: 0; }
+.mapp__map { grid-area: map; min-width: 0; }
+.mapp__lists { min-width: 0; }
+.mapp__side { grid-area: lists; display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+.mapp__tabs { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+.mapp__tabs .chip { flex: none; }
+.smap__body { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+
+.smap__card { display: flex; flex-direction: column; gap: 12px; padding: 20px 18px; min-width: 0; }
+.smap__mapcard { position: relative; padding: 0; overflow: hidden; }
+.smap { width: 100%; height: 320px; background: #0b2a5b; border-radius: inherit; }
+.smap__cap {
+  position: absolute; left: 12px; bottom: 12px; z-index: 500; padding: 8px 12px; border-radius: 12px;
+  background: rgba(5, 26, 58, 0.85); color: var(--on-navy); font-size: 13px;
+}
+.smap__head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.smap__title { font-size: 19px; font-weight: 700; word-break: keep-all; }
+.smap__sub { flex: none; font-size: 14px; color: var(--on-navy-soft); }
+.smap__desc { font-size: 13px; line-height: 1.6; color: var(--on-navy-soft); }
+.smap__empty { font-size: 13px; color: var(--on-navy-mute); }
+
+.slist { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.slist.is-loading { opacity: 0.55; }
+.srow {
+  display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 12px; width: 100%;
+  padding: 12px 8px; text-align: left; cursor: pointer; border: 0; border-bottom: 1px solid rgba(159, 179, 214, 0.22);
+  background: none; color: var(--on-navy); font: inherit;
+}
+.srow.is-on { background: rgba(255, 255, 255, 0.08); border-radius: 14px; }
+.srow__no, .srow__ico {
+  display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14); color: var(--gold); font-size: 14px; font-weight: 700;
+}
+.srow__main, .srow__stat { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.srow__main b { font-size: 16px; }
+.srow__main small, .srow__stat small { font-size: 13px; color: var(--on-navy-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.srow__stat { align-items: flex-end; text-align: right; }
+.srow__stat b { font-size: 15px; color: var(--gold); white-space: nowrap; }
+.srow__new { margin-left: 6px; padding: 1px 7px; border-radius: 6px; background: rgba(124, 200, 252, 0.28); color: #bfe3ff; font-size: 11px; font-style: normal; }
+
+/* 지도 마커 */
+.smk-wrap { background: none; border: 0; }
+.smk {
+  display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; box-sizing: border-box;
+  background: #7cc8fc; border: 2px solid #fff; color: #06234d; font-size: 14px; font-weight: 700; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.smk.is-new { background: #bfe3ff; }
+.smk.is-on { background: #ffd66b; width: 38px; height: 38px; margin: -2px 0 0 -2px; }
+.smk-me { display: block; width: 22px; height: 22px; border-radius: 50%; background: #2f7df6; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(47, 125, 246, 0.3); }
+
+/* 판매점 상세 창 */
+.sstore__btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sstore__btns .btn { justify-content: center; text-align: center; text-decoration: none; }
+.sstore__stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.sstore__stats div { display: flex; flex-direction: column; gap: 6px; padding: 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(159, 179, 214, 0.25); }
+.sstore__stats span { font-size: 13px; color: var(--on-navy-soft); }
+.sstore__stats b { font-size: 24px; color: var(--gold); }
+.sstore__semi { font-size: 13px; color: var(--on-navy-soft); }
+.sstore__hist { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; max-height: 240px; overflow-y: auto; }
+.sstore__hist li { display: grid; grid-template-columns: 64px 1fr auto; gap: 10px; padding: 12px 0; border-bottom: 1px solid rgba(159, 179, 214, 0.22); font-size: 15px; }
+.sstore__hist b { color: var(--gold); }
+.sstore__hist em { font-style: normal; color: var(--on-navy-soft); }
+
+.mapp__bar { display: flex; flex-direction: column; gap: 12px; }
+@media (min-width: 1024px) {
+  .mapp { gap: 24px; }
+  .mapp__grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); grid-template-areas: "ai map" "lists map"; gap: 24px; }
+  .mapp__map { position: sticky; top: 88px; grid-row: 1 / 3; align-self: start; }
+  .smap { height: calc(100vh - 128px); min-height: 520px; max-height: 820px; }
+  
+  .smap__card { padding: 24px 26px; }
+  .smap__mapcard { padding: 0; }
+  /* 검색창과 반경 칩을 한 줄에 */
+  .mapp__bar { flex-direction: row; align-items: center; justify-content: space-between; gap: 24px; }
+  .mapp__bar .mapp__search { flex: 1; max-width: 520px; }
+  .mapp__bar .mapp__chips { overflow: visible; }
+}
+
+/* 지도 AI 카드 */
+.mapai { display: flex; flex-direction: column; gap: 12px; padding: 20px 18px; }
+.mapai__form { display: flex; gap: 10px; }
+.mapai__input {
+  flex: 1; min-width: 0; box-sizing: border-box; padding: 14px 18px; border: 0; border-radius: 999px;
+  background: #fff; color: #0a1f44; font-size: 16px; outline: 0;
+}
+.mapai__input::placeholder { color: #6b7d9c; }
+.mapai__send {
+  display: grid; place-items: center; flex: none; width: 52px; height: 52px; border: 0; border-radius: 50%;
+  cursor: pointer; background: linear-gradient(180deg, #7cc8fc, #3f8fe0); color: #fff;
+}
+.mapai__send:disabled { opacity: 0.55; cursor: default; }
+.mapai__row { display: flex; gap: 10px; align-items: flex-start; }
+.mapai__ava { display: grid; place-items: center; flex: none; width: 32px; height: 32px; border-radius: 50%; background: #7cc8fc; color: #06234d; }
+.mapai__bubble {
+  flex: 1; margin: 0; padding: 12px 14px; border-radius: 14px; background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(159, 179, 214, 0.25); color: var(--on-navy); font-size: 15px; line-height: 1.65; white-space: pre-wrap;
+}
+.mapai__bubble.is-error { border-color: rgba(255, 140, 140, 0.6); }
+.mapai__charge { margin: 0 0 0 42px; font-size: 13px; color: var(--on-navy-soft); }
+.mapai__link { align-self: flex-start; margin-left: 42px; padding: 0; border: 0; background: none; cursor: pointer; color: #bfe3ff; font-size: 14px; }
+.mapg__tabs { display: flex; gap: 8px; }
+.mapg__tabs .chip { flex: 1; justify-content: center; }
+@media (min-width: 1024px) { .mapai { padding: 24px 26px; } .mapai__form { max-width: 720px; } }
+
+/* 목록 안 스크롤바를 카드 색에 맞춘다 */
+
+
+
+
