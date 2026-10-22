@@ -192,12 +192,28 @@ public class StoreQueryRepository {
             args.add(sigungu);
         }
         if (keyword != null) {
-            where.append(" AND (s.store_name LIKE ? OR s.road_address LIKE ? OR s.jibun_address LIKE ?)");
-            String like = "%" + escapeLike(keyword) + "%";
-            args.add(like);
-            args.add(like);
-            args.add(like);
+            // 띄어쓰기로 나눈 단어가 모두(이름·도로명·지번 주소 어디든) 들어 있는 판매점을 찾는다. 예) "인천시 학익동"
+            for (String token : keyword.trim().split("\\s+")) {
+                String t = normalizeToken(token);
+                if (t.isEmpty()) {
+                    continue;
+                }
+                where.append(" AND (s.store_name LIKE ? OR s.road_address LIKE ? OR s.jibun_address LIKE ?)");
+                String like = "%" + escapeLike(t) + "%";
+                args.add(like);
+                args.add(like);
+                args.add(like);
+            }
         }
+    }
+
+    /** "인천시"→"인천", "서울특별시"→"서울", "경기도"→"경기"처럼 주소에 저장된 짧은 시·도 이름에 맞춘다. */
+    static String normalizeToken(String token) {
+        String t = token.replaceAll("(특별자치시|특별자치도|특별시|광역시)$", "");
+        if (t.matches("^(서울|부산|대구|인천|광주|대전|울산|세종)시$") || t.matches("^(경기|강원|충북|충남|전북|전남|경북|경남|제주)도$")) {
+            t = t.substring(0, t.length() - 1);
+        }
+        return t;
     }
 
     /** LIKE 검색에서 % 와 _ 와 \ 를 일반 글자로 취급하게 만든다. */
