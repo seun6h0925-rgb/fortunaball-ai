@@ -274,6 +274,7 @@ CREATE TABLE stat_pattern_card (
 
 CREATE TABLE lotto_store (
   id                   BIGINT        NOT NULL AUTO_INCREMENT COMMENT '판매점 고유번호',
+  shop_code            VARCHAR(20)   NULL     COMMENT '[추가 2026-10-21] 동행복권 판매점 번호. 판매점을 구분하는 기준값(중복 불가)',
   store_name           VARCHAR(100)  NOT NULL COMMENT '판매점명',
   road_address         VARCHAR(255)  NULL     COMMENT '도로명 주소',
   jibun_address        VARCHAR(255)  NULL     COMMENT '지번 주소',
@@ -281,6 +282,7 @@ CREATE TABLE lotto_store (
   sigungu              VARCHAR(50)   NULL     COMMENT '시군구',
   latitude             DECIMAL(10,7) NULL     COMMENT '위도. 지오코딩 전까지 NULL',
   longitude            DECIMAL(10,7) NULL     COMMENT '경도. 지오코딩 전까지 NULL',
+  is_closed            TINYINT(1)    NOT NULL DEFAULT 0 COMMENT '[추가 2026-10-21] 폐점 여부. 1이면 지도·검색·AI 답변에서 제외(당첨 이력·집계는 보관)',
   store_type           VARCHAR(30)   NULL     COMMENT '판매점 유형. 공공데이터 유형 코드값(코드 의미는 확인 필요)',
   geocode_status       VARCHAR(20)   NOT NULL DEFAULT 'PENDING' COMMENT '[추가 2026-10-16] PENDING / SUCCESS / FAILED. 좌표 변환 상태',
   geocoded_at          DATETIME      NULL     COMMENT '[추가 2026-10-16] 좌표 변환일자',
@@ -290,8 +292,9 @@ CREATE TABLE lotto_store (
   created_at           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
   updated_at           DATETIME      NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '최종수정일',
   PRIMARY KEY (id),
-  -- 같은 판매점이 파일에서 반복될 수 있어 판매점명 + 도로명주소를 중복 방지 기준으로 쓴다
-  UNIQUE KEY uk_lotto_store_name_road (store_name, road_address),
+  -- [변경 2026-10-21] 중복 방지는 shop_code 가 맡는다. 같은 자리에서 가게가 바뀐 곳(번호는 다름)이 있어 이름+주소는 검색용 색인만 둔다
+  UNIQUE KEY uk_lotto_store_shop_code (shop_code),
+  KEY idx_lotto_store_name_road (store_name, road_address),
   KEY idx_lotto_store_region (sido, sigungu),
   KEY idx_lotto_store_geo (latitude, longitude),
   KEY idx_lotto_store_geocode_status (geocode_status),
@@ -305,7 +308,7 @@ CREATE TABLE store_winning_history (
   lotto_store_id BIGINT      NOT NULL COMMENT '판매점 고유번호',
   round_no       INT         NOT NULL COMMENT '당첨 회차 번호',
   winning_rank   INT         NOT NULL COMMENT '당첨 등수',
-  win_type       VARCHAR(20) NOT NULL COMMENT 'AUTO / MANUAL / SEMI_AUTO',
+  win_type       VARCHAR(20) NULL     COMMENT '[변경 2026-10-21] AUTO / MANUAL / SEMI_AUTO. 자료에 구분이 없으면 NULL',
   created_at     DATETIME    NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '등록일자',
   PRIMARY KEY (id),
   KEY idx_store_winning_history_store (lotto_store_id),
@@ -313,7 +316,7 @@ CREATE TABLE store_winning_history (
   CONSTRAINT fk_store_winning_history_store FOREIGN KEY (lotto_store_id) REFERENCES lotto_store (id),
   CONSTRAINT fk_store_winning_history_round FOREIGN KEY (round_no) REFERENCES draw_round (round_no),
   CONSTRAINT ck_store_winning_history_rank CHECK (winning_rank BETWEEN 1 AND 5),
-  CONSTRAINT ck_store_winning_history_type CHECK (win_type IN ('AUTO','MANUAL','SEMI_AUTO'))
+  CONSTRAINT ck_store_winning_history_type CHECK (win_type IS NULL OR win_type IN ('AUTO','MANUAL','SEMI_AUTO'))
 ) ENGINE=InnoDB COMMENT='판매점 당첨 이력(회차별)';
 
 -- [추가 2026-10-16] 판매점별 당첨 집계 (1등 자동/수동/반자동, 2등)
@@ -585,3 +588,20 @@ CREATE TABLE scheduler_log (
   KEY idx_scheduler_log_job (job_name, started_at),
   CONSTRAINT ck_scheduler_log_status CHECK (job_status IN ('RUNNING','SUCCESS','FAILED'))
 ) ENGINE=InnoDB COMMENT='스케줄러 실행 로그';
+
+-- ---------------------------------------------------------------------
+-- [추가 2026-10-22] 서비스 좋아요 (API-68·69)
+-- 서버 시작 시 LikeSchemaInitializer 가 같은 정의로 없을 때 자동 생성한다. 직접 만들 때도 아래 정의를 쓴다.
+-- ---------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS service_like_total (
+  id          TINYINT NOT NULL COMMENT '항상 1. 서비스 전체 좋아요 합계 한 줄',
+  total_count BIGINT  NOT NULL DEFAULT 0 COMMENT '서비스 전체 좋아요 수',
+  PRIMARY KEY (id)
+) ENGINE=InnoDB COMMENT='서비스 좋아요 합계';
+
+CREATE TABLE IF NOT EXISTS service_like_daily (
+  like_date   DATE        NOT NULL COMMENT '누른 날짜(한국 시간)',
+  actor_key   VARCHAR(80) NOT NULL COMMENT '게스트 식별값 또는 접속지(IP)의 SHA-256 해시. 원본은 저장하지 않는다',
+  click_count INT         NOT NULL DEFAULT 0 COMMENT '그날 누른 횟수',
+  PRIMARY KEY (like_date, actor_key)
+) ENGINE=InnoDB COMMENT='서비스 좋아요 일별 횟수(7일 지나면 삭제)';
