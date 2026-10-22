@@ -18,7 +18,7 @@ const dateToRound = (iso) => {
   return Number.isNaN(t) ? null : Math.floor((t - FIRST_DRAW) / (7 * DAY)) + 1
 }
 
-export default function RoundNav({ value, latest, onChange, first = 1 }) {
+export default function RoundNav({ value, latest, onChange, first = 1, latestTag = '최신' }) {
   const [open, setOpen] = useState(false)
   if (value == null || latest == null) return null
   const go = (r) => onChange(Math.min(latest, Math.max(first, r)))
@@ -31,7 +31,7 @@ export default function RoundNav({ value, latest, onChange, first = 1 }) {
         </button>
         <button type="button" className="rnav__center" aria-haspopup="dialog" onClick={() => setOpen(true)}>
           <b>{value}회</b>
-          {value === latest && <span className="rnav__tag">최신</span>}
+          {value === latest && <span className="rnav__tag">{latestTag}</span>}
           <span className="rnav__caret" aria-hidden="true">▾</span>
         </button>
         <button type="button" className="rnav__arrow" aria-label="다음 회차" disabled={value >= latest}
@@ -44,6 +44,7 @@ export default function RoundNav({ value, latest, onChange, first = 1 }) {
           value={value}
           latest={latest}
           first={first}
+          latestTag={latestTag}
           onClose={() => setOpen(false)}
           onPick={(r) => {
             setOpen(false)
@@ -56,7 +57,7 @@ export default function RoundNav({ value, latest, onChange, first = 1 }) {
 }
 
 /** 선택 창. 모바일은 아래에서 올라오는 시트, PC 는 가운데 창. (열릴 때마다 새로 만들어져서 입력칸이 현재 회차로 시작한다) */
-function RoundSheet({ value, latest, first, onClose, onPick }) {
+export function RoundSheet({ value, latest, first, latestTag, onClose, onPick }) {
   const [text, setText] = useState(String(value))
   const [date, setDate] = useState(roundToDate(value))
   const cur = useRef(null)
@@ -114,7 +115,7 @@ function RoundSheet({ value, latest, first, onClose, onPick }) {
                 className={`rsheet__item${r === value ? ' is-on' : ''}`} aria-current={r === value ? 'true' : undefined}
                 onClick={() => onPick(r)}>
                 <b>{r}회</b>
-                <span>{roundToDate(r)}{r === latest ? ' · 최신' : ''}</span>
+                <span>{roundToDate(r)}{r === latest ? ` · ${latestTag}` : ''}</span>
               </button>
             </li>
           ))}

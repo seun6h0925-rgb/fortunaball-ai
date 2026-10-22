@@ -1,0 +1,254 @@
+/* 회차별 당첨번호(UI-08). 모바일·태블릿: 카드 한 줄씩 / PC: 왼쪽 회차 카드, 오른쪽 등수 표 */
+.draws {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.draws__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  transition: opacity var(--t-fast) var(--ease);
+}
+.draws__body.is-loading {
+  opacity: 0.55;
+}
+
+/* ── 회차 카드 ── */
+.draws__round {
+  container-type: inline-size; /* 카드 폭에 맞춰 공 크기를 정한다 (7개가 항상 한 줄에 들어가게) */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 18px;
+}
+.draws__nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+}
+.draws__arrow {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--line-card);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--on-navy);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+}
+.draws__arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.draws__arrow:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+.draws__title {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 0;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 14px;
+  background: none;
+  color: var(--on-navy);
+  cursor: pointer;
+}
+.draws__title b {
+  font-size: 28px;
+  font-weight: 700;
+}
+.draws__caret {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: middle;
+  color: var(--on-navy);
+}
+.draws__date {
+  font-size: 14px;
+  color: var(--on-navy-soft);
+  white-space: nowrap;
+}
+.draws__balls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+.draws__balls .ball {
+  --s: min(48px, calc((100cqw - 52px) / 7));
+}
+.draws__balls-skel {
+  width: 100%;
+  height: 44px;
+}
+.draws__plus {
+  font-size: 20px;
+  color: var(--on-navy-soft);
+}
+.draws__hint {
+  font-size: 13px;
+  color: var(--on-navy-mute);
+}
+
+/* ── 등수별 표 ── */
+.draws__prizes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 20px 18px;
+}
+.draws__phead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin-bottom: 8px;
+}
+.draws__ptitle {
+  font-size: 19px;
+  font-weight: 700;
+}
+.draws__psub {
+  font-size: 13px;
+  color: var(--on-navy-soft);
+}
+.draws__row {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1.2fr) minmax(0, 1.2fr) minmax(0, 1fr) 20px;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--on-navy);
+  font-size: 15px;
+  text-align: left;
+}
+button.draws__row {
+  cursor: pointer;
+}
+.draws__row--head {
+  min-height: 32px;
+  font-size: 13px;
+  color: var(--on-navy-soft);
+}
+.draws__row .r {
+  text-align: right;
+}
+.draws__item {
+  border-bottom: 1px solid rgba(159, 179, 214, 0.22);
+}
+.draws__item.is-open {
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border-bottom-color: transparent;
+}
+.draws__item.is-open > .draws__row {
+  padding: 0 10px;
+}
+.draws__rank {
+  font-weight: 700;
+  color: var(--gold);
+}
+.draws__cond {
+  color: var(--on-navy-soft);
+}
+.draws__chev {
+  text-align: center;
+  color: var(--on-navy-soft);
+}
+.draws__empty {
+  padding: 16px 4px;
+  font-size: 14px;
+  color: var(--on-navy-soft);
+}
+
+/* 세금·실수령액 펼침 */
+.draws__tax {
+  margin: 0 8px 12px;
+  padding: 14px 14px 12px;
+  border: 1px solid var(--line-card);
+  border-radius: 14px;
+  background: rgba(3, 14, 34, 0.35);
+}
+.draws__taxgrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 10px;
+}
+.draws__taxcol {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.draws__line {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(159, 179, 214, 0.22);
+  font-size: 14px;
+}
+.draws__line small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--on-navy-soft);
+}
+.draws__line b {
+  text-align: right;
+  font-size: 15px;
+}
+.draws__line--net {
+  border-bottom: 0;
+}
+.draws__line--net b {
+  font-size: 20px;
+  color: var(--gold);
+}
+.draws__taxnote {
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--on-navy-mute);
+}
+
+@media (min-width: 1024px) {
+  .draws {
+    gap: 24px;
+  }
+  .draws__body {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.5fr);
+    gap: 24px;
+  }
+  .draws__round {
+    padding: 28px 24px;
+    gap: 22px;
+  }
+  .draws__prizes {
+    padding: 24px 26px;
+  }
+}
+@media (min-width: 1280px) {
+  .draws__taxgrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 24px;
+  }
+}
