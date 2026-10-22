@@ -5,6 +5,7 @@ import NoticeBox from '../components/ui/NoticeBox.jsx'
 import { ErrorState } from '../components/ui/StateView.jsx'
 import { PrizeTable, RoundCard } from '../features/draws/DrawsPanels.jsx'
 import { fetchDraw } from '../features/draws/drawsApi.js'
+import { TicketCard } from '../features/ticket/TicketCheck.jsx'
 import { fetchLatestDraw } from '../features/home/homeApi.js'
 import InfoTabs from '../features/info/InfoTabs.jsx'
 import useApi from '../hooks/useApi.js'
@@ -55,7 +56,10 @@ export default function DrawsPage() {
         </div>
       ) : (
         <div className={`draws__body${drawQ.loading ? ' is-loading' : ''}`} aria-busy={drawQ.loading}>
-          <RoundCard draw={draw} latest={latestNo} onPick={pick} />
+          <div className="draws__left">
+            <RoundCard draw={draw} latest={latestNo} onPick={pick} />
+            <TicketCard />
+          </div>
           {draw ? <PrizeTable key={draw.roundNo} draw={draw} /> : <div className="card card--hero draws__prizes"><div className="skeleton" style={{ height: 260 }} /></div>}
         </div>
       )}

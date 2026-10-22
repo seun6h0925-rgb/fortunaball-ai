@@ -16,10 +16,15 @@ import DrawsPage from './pages/DrawsPage.jsx'
 import WinnersPage from './pages/WinnersPage.jsx'
 import VerifyPage from './pages/VerifyPage.jsx'
 import MapPage from './pages/MapPage.jsx'
+import PayoutPage from './pages/PayoutPage.jsx'
+import ClaimGuidePage from './pages/ClaimGuidePage.jsx'
+import AboutPage from './pages/AboutPage.jsx'
+import NoticesPage from './pages/NoticesPage.jsx'
+import NoticeDetailPage from './pages/NoticeDetailPage.jsx'
 import { PAGES } from './app/pages.js'
 
 // 진짜 화면이 연결된 주소. 여기에 없는 주소는 아래에서 "준비 중" 화면으로 연결된다.
-const BUILT = new Set(['/', '/generate', '/generate/patterns', '/generate/result', '/generate/issued', '/issues', '/analyst', '/dream', '/stats', '/draws', '/winners', '/verify', '/map'])
+const BUILT = new Set(['/', '/generate', '/generate/patterns', '/generate/result', '/generate/issued', '/issues', '/analyst', '/dream', '/stats', '/draws', '/winners', '/verify', '/map', '/payout', '/guide/payout', '/about', '/notices', '/notices/:id'])
 
 /**
  * 화면 주소 표. 실제 화면을 만들 때마다 이 표에서 element 만 바꿔 끼운다.
@@ -42,6 +47,11 @@ export default function App() {
         <Route path="/winners" element={<WinnersPage />} />
         <Route path="/verify" element={<VerifyPage />} />
         <Route path="/map" element={<MapPage />} />
+        <Route path="/payout" element={<PayoutPage />} />
+        <Route path="/guide/payout" element={<ClaimGuidePage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/notices" element={<NoticesPage />} />
+        <Route path="/notices/:id" element={<NoticeDetailPage />} />
         {PAGES.filter((p) => !BUILT.has(p.path)).map((p) => (
           <Route key={p.path} path={p.path} element={<ComingSoonPage title={p.title} />} />
         ))}

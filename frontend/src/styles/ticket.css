@@ -1,0 +1,32 @@
+.draws__left { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* 내 용지 확인하기(UI-08): 회차 카드 아래 카드, 그리고 결과 창 */
+.tkc { display: flex; align-items: center; gap: 16px; width: 100%; padding: 22px 22px; text-align: left; color: var(--on-navy); font: inherit; cursor: pointer; border: 1px solid var(--line-card); }
+.tkc__ico { flex: none; display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--accent); color: var(--on-accent); }
+.tkc__ico svg { width: 30px; height: 30px; }
+.tkc__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tkc__text b { font-size: 20px; }
+.tkc__text small { font-size: 14.5px; line-height: 1.55; color: var(--on-navy-soft); }
+.tkc > svg { width: 24px; height: 24px; }
+.tk__pick { display: flex; flex-direction: column; gap: 14px; }
+.tk__tips { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.7; color: var(--on-navy-soft); }
+.tk__res { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
+.tk__best { display: flex; flex-direction: column; gap: 4px; padding: 16px; border: 1px solid var(--line-card); border-radius: 16px; background: rgba(255, 255, 255, 0.06); }
+.tk__best small { font-size: 13px; color: var(--on-navy-mute); }
+.tk__best b { font-size: 28px; font-weight: 800; }
+.tk__best.is-win b { color: var(--gold); }
+.tk__best p { margin: 0; font-size: 14px; line-height: 1.6; color: var(--on-navy-soft); }
+.tk__win { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--on-navy-soft); }
+.tk__balls { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.tk__balls i { font-style: normal; color: var(--on-navy-mute); }
+.tk__games { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.tk__game { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line-soft); border-radius: 14px; background: rgba(255, 255, 255, 0.04); }
+.tk__line { flex: none; display: flex; flex-direction: column; align-items: center; width: 40px; font-weight: 800; }
+.tk__line small { font-size: 11px; font-weight: 500; color: var(--on-navy-mute); }
+.tk__game .tk__balls { flex: 1; min-width: 0; }
+.tk__rank { flex: none; min-width: 44px; text-align: right; font-size: 14px; color: var(--on-navy-mute); }
+.tk__rank.is-win { color: var(--gold); }
+
+/* 서비스 안내(UI-14) 안의 소제목·목록 */
+.ab__h { margin: 6px 0 0; font-size: 14px; font-weight: 700; color: var(--on-navy); }
+.ab__ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 6px; }
+.ab__ul li { padding-left: 2px; }

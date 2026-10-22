@@ -20,6 +20,8 @@ import './styles/draws.css'
 import './styles/winners.css'
 import './styles/verify.css'
 import './styles/map.css'
+import './styles/info.css'
+import './styles/ticket.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

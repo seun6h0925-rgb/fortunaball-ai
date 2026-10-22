@@ -17,6 +17,25 @@ body {
   background-color: #4f93de;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  /* 한글은 단어 중간에서 끊지 않고 띄어쓰기에서만 다음 줄로 넘긴다. 아주 긴 글자(주소·코드)만 칸을 넘지 않게 끊는다 */
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  line-break: strict;
+}
+
+/* 글 덩어리는 줄 끝이 한 글자만 남지 않게 고르게 나눠 읽기 좋게 한다 */
+p,
+li,
+small,
+dd {
+  text-wrap: pretty;
+}
+
+h1,
+h2,
+h3,
+.state__title {
+  text-wrap: balance;
 }
 
 button,
