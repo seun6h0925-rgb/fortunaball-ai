@@ -10,6 +10,7 @@ import {
   CenterPanel,
   HotPanel,
   MakeCard,
+  PreviewCard,
   SectionPanel,
   SplitPanel,
   WinterPanel,
@@ -18,6 +19,7 @@ import {
   DEFAULT_PERIOD,
   PATTERN_PERIOD,
   TABS,
+  fetchDraw,
   fetchNumbers,
   fetchPatterns,
   fetchSummary,
@@ -48,9 +50,10 @@ export default function StatsPage() {
     [s?.fromRound, s?.toRound],
   )
 
+  const dq = useApi((signal) => (basis !== null ? fetchDraw(signal, basis) : Promise.resolve(null)), [basis])
   const pattern = pq.data?.patterns?.find((p) => p.code === TABS.find((t) => t.key === tab).code)
   const latest = pq.data?.basisRound // 마지막으로 추첨이 끝난 회차
-  const target = pq.data?.targetRound // 이번 주 추첨 예정 회차(미리보기)
+  const target = pq.data?.targetRound // 이번 주 추첨 예정 회차(사전 분석)
   const current = basis ?? target
   const pastBasis = basis !== null && latest != null && basis !== latest
 
@@ -73,26 +76,30 @@ export default function StatsPage() {
         </nav>
       </PageHeader>
 
+      <div className="stats__top">
       <section className="card card--hero stats__bar" aria-label="분석 기준">
         <div className="stats__bar-row">
           <div className="stats__pickbox">
             <span className="stats__lbl">기준 회차</span>
-            <RoundNav value={current} latest={target} latestTag="미리보기" onChange={(r) => setBasis(r === target ? null : r)} />
+            <RoundNav value={current} latest={target} latestTag="사전 분석" onChange={(r) => setBasis(r === target ? null : r)} />
           </div>
           {s && (
             <span className="chip chip--sm is-on stats__state">
-              {basis === null ? `${target}회 · 미리보기` : `${basis}회 · 확정`}
+              {basis === null ? `${target}회 · 사전 분석` : `${basis}회 · 확정`}
             </span>
           )}
         </div>
         {s && (
           <p className="stats__note">
             {basis === null
-              ? `${target}회 미리보기예요. ${s.toRound}회까지의 결과로 미리 계산한 통계라서 실제 결과와 다를 수 있어요. 당첨번호가 발표되면 실제 번호로 확정되고, 통계도 다시 계산돼요.`
+              ? `${target}회 사전 분석이에요. ${s.toRound}회까지의 결과로 미리 계산한 통계라서 실제 결과와 다를 수 있어요. 당첨번호가 발표되면 실제 번호로 확정되고, 통계도 다시 계산돼요.`
               : `${s.toRound}회까지의 결과로 계산한 확정 통계예요.`}
           </p>
         )}
       </section>
+
+      {s && target && <PreviewCard tab={tab} pattern={pattern} target={target} basis={basis} draw={dq.data} />}
+      </div>
 
       {sq.error && (
         <div className="card">

@@ -257,3 +257,56 @@ export function MakeCard({ tab, pattern, showHit }) {
     </section>
   )
 }
+
+// ── 사전 분석 번호 / 확정 당첨번호 카드 ─────────────────────
+/**
+ * 사전 분석(대상 회차): 서버가 이 탭의 패턴 조건으로 미리 만든 번호 1게임(API-44 exampleNumbers).
+ *   (서버가 회차·패턴으로 씨앗을 고정해서 같은 회차에서는 새로고침해도 같은 번호가 나온다)
+ * 확정 회차: 실제 당첨번호(API-02). 대상 회차의 추첨이 끝나면 그 회차는 자동으로 이쪽으로 바뀐다.
+ */
+export function PreviewCard({ tab, pattern, target, basis, draw }) {
+  const t = TABS.find((x) => x.key === tab)
+  if (basis === null) {
+    const nums = pattern?.exampleNumbers
+    return (
+      <section className="card card--hero spanel pview">
+        <div className="spanel__head">
+          <h2 className="spanel__title">{target}회 사전 분석 번호</h2>
+          <span className="pcard__badge">{t.label}</span>
+        </div>
+        {nums?.length ? (
+          <div className="pview__balls" aria-label={`사전 분석 번호 ${nums.join(', ')}`}>
+            {nums.map((n) => (
+              <LottoBall key={n} n={n} />
+            ))}
+          </div>
+        ) : (
+          <p className="spanel__note">지금은 이 통계로 번호를 만들 수 없어요.</p>
+        )}
+        <p className="spanel__note">
+          {t.label} 조건으로 통계에서 미리 만든 번호예요. 맞을 수도 틀릴 수도 있어요. 추첨이 끝나면 실제 당첨번호로 바뀌어요.
+        </p>
+      </section>
+    )
+  }
+  return (
+    <section className="card card--hero spanel pview">
+      <div className="spanel__head">
+        <h2 className="spanel__title">{basis}회 당첨번호</h2>
+        <span className="pcard__badge">{t.label}</span>
+      </div>
+      {draw ? (
+        <div className="pview__balls" aria-label={`당첨번호 ${draw.numbers.join(', ')} 보너스 ${draw.bonusNumber}`}>
+          {draw.numbers.map((n) => (
+            <LottoBall key={n} n={n} />
+          ))}
+          <span className="pview__plus" aria-hidden="true">+</span>
+          <LottoBall n={draw.bonusNumber} />
+        </div>
+      ) : (
+        <div className="skeleton" style={{ height: 44 }} />
+      )}
+      <p className="spanel__note">실제 추첨 결과예요. {basis}회 통계는 이 번호까지 반영해 계산했어요.</p>
+    </section>
+  )
+}

@@ -490,3 +490,50 @@
 .stats__bar-row {
   flex-wrap: nowrap;
 }
+
+/* 사전 분석 번호 / 확정 당첨번호 */
+.pview__balls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.pview__plus {
+  font-size: 20px;
+  color: var(--on-navy-soft);
+}
+
+/* 위쪽 한 줄: 기준 회차 카드 + 사전 분석 번호(확정 당첨번호) 카드. PC 에서는 나란히 */
+.stats__top {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+@media (min-width: 1024px) {
+  .stats__top {
+    flex-direction: row;
+    align-items: stretch;
+    gap: 24px;
+  }
+  .stats__top {
+    min-height: 208px; /* 사전 분석/확정으로 바뀌어도 위쪽 두 카드 높이가 변하지 않게 */
+  }
+  .stats__top > .stats__bar {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: flex-start;
+    gap: 18px;
+  }
+  .stats__top > .pview {
+    flex: 1.15 1 0;
+    min-width: 0;
+    justify-content: flex-start;
+    gap: 18px;
+  }
+  .pview .ball {
+    --s: 52px;
+  }
+  .stats__note {
+    font-size: 14px;
+  }
+}

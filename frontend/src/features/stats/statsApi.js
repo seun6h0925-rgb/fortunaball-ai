@@ -37,3 +37,6 @@ export const fetchNumbers = (signal, fromRound, toRound) =>
 
 /** API-44 패턴 카드 (설명과 "최근 N회 중 M회 해당") */
 export const fetchPatterns = (signal, period) => api.get('/api/statistics/patterns', { signal, query: { period } })
+
+/** API-02 회차별 당첨번호: { roundNo, drawDate, numbers[6], bonusNumber, prizes[...] } (확정된 회차만. 추첨 전이면 오류) */
+export const fetchDraw = (signal, round) => api.get(`/api/draws/${round}`, { signal })
