@@ -1,0 +1,131 @@
+/* 회차 고르기 공용(RoundNav). ‹ 회차 ▾ › */
+.rnav {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.rnav__arrow,
+.rnav__center {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 40px;
+  border: 1px solid var(--line-card);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--on-navy);
+  cursor: pointer;
+}
+.rnav__arrow {
+  width: 40px;
+  font-size: 22px;
+  line-height: 1;
+}
+.rnav__center {
+  padding: 0 16px;
+  font-size: 16px;
+}
+.rnav__tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  font-size: 12px;
+}
+.rnav__caret {
+  font-size: 12px;
+  color: var(--on-navy-soft);
+}
+.rnav__arrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.rnav__arrow:not(:disabled):hover,
+.rnav__center:hover {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* 선택 창 */
+.rsheet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.rsheet__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+.rsheet__label {
+  flex: none;
+  width: 84px;
+  font-size: 14px;
+  color: var(--on-navy-soft);
+}
+.rsheet__input {
+  flex: 1;
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 1px solid var(--line-card);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--on-navy);
+  font-size: 16px;
+  color-scheme: dark;
+}
+.rsheet__go {
+  flex: none;
+  min-height: 42px;
+  padding: 0 16px;
+  white-space: nowrap;
+}
+.rsheet__hint {
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--on-navy-mute);
+}
+.rsheet__sub {
+  margin-top: 10px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.rsheet__list {
+  max-height: 34dvh;
+  overflow-y: auto;
+  border: 1px solid var(--line-card);
+  border-radius: 14px;
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+}
+.rsheet__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 42px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: var(--on-navy);
+  font-size: 15px;
+  cursor: pointer;
+}
+.rsheet__item span {
+  font-size: 13px;
+  color: var(--on-navy-soft);
+}
+.rsheet__item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+.rsheet__item.is-on {
+  background: rgba(120, 190, 255, 0.28);
+}
+@media (min-width: 1024px) {
+  .rsheet {
+    width: min(560px, 92vw);
+  }
+}

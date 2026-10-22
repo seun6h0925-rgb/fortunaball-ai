@@ -14,6 +14,8 @@ import './styles/issues.css'
 import './styles/patterns.css'
 import './styles/analyst.css'
 import './styles/dream.css'
+import './styles/stats.css'
+import './styles/roundnav.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
