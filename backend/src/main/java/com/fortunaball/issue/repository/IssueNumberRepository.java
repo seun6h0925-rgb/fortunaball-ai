@@ -12,6 +12,9 @@ public interface IssueNumberRepository extends JpaRepository<IssueNumber, Long> 
 
     List<IssueNumber> findByNumberIssueIdOrderByGameOrderAsc(Long numberIssueId);
 
+    /** 여러 발급 건에서 특정 순서의 게임만 한 번에 읽는다. (목록 카드에 첫 게임 번호를 보여 주려고, 건마다 따로 조회하지 않는다) */
+    List<IssueNumber> findByNumberIssueIdInAndGameOrder(Collection<Long> numberIssueIds, int gameOrder);
+
     /** 발급 건별 검증 현황 집계용 결과 한 줄 */
     interface VerificationCount {
         Long getIssueId();

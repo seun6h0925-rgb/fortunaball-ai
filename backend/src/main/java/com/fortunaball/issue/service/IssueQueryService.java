@@ -95,14 +95,25 @@ public class IssueQueryService {
 
         List<Long> ids = result.getContent().stream().map(NumberIssue::getId).toList();
         Map<Long, VerificationCount> counts = ids.isEmpty() ? Map.of() : verificationOf(ids);
+        Map<Long, List<Integer>> firstGames = ids.isEmpty() ? Map.of() : firstGamesOf(ids);
 
         List<IssueListResponse.Item> items = result.getContent().stream().map(i -> {
             VerificationStatus status = statusOf(i.getId(), counts);
             return new IssueListResponse.Item(i.getIssueCode(), i.getTargetRoundNo(), i.getGameCount(),
-                    i.getCreatedAt(), patternCodeOf(i), patternNameOf(i), status.name(), status.label());
+                    i.getCreatedAt(), patternCodeOf(i), patternNameOf(i), status.name(), status.label(),
+                    firstGames.get(i.getId()));
         }).toList();
 
         return new IssueListResponse(items, page, size, result.getTotalElements(), result.getTotalPages());
+    }
+
+    /** 발급 건별 첫 번째 게임 번호 (목록 카드용). 첫 게임이 없는 건은 맵에 없어 null 로 나간다 */
+    private Map<Long, List<Integer>> firstGamesOf(List<Long> issueIds) {
+        Map<Long, List<Integer>> map = new HashMap<>();
+        for (IssueNumber n : numberRepo.findByNumberIssueIdInAndGameOrder(issueIds, 1)) {
+            map.put(n.getNumberIssueId(), n.numbers());
+        }
+        return map;
     }
 
     private Map<Long, VerificationCount> verificationOf(List<Long> issueIds) {
