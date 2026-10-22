@@ -5,8 +5,10 @@ import com.fortunaball.stat.domain.StatPeriod;
 import com.fortunaball.stat.dto.NumberStatResponse;
 import com.fortunaball.stat.dto.PatternStatResponse;
 import com.fortunaball.stat.dto.PrizeTrendResponse;
+import com.fortunaball.stat.dto.RegionStatResponse;
 import com.fortunaball.stat.dto.StatSummaryResponse;
 import com.fortunaball.stat.service.PrizeTrendService;
+import com.fortunaball.stat.service.RegionStatService;
 import com.fortunaball.stat.service.StatAnalysisService;
 import com.fortunaball.stat.service.StatQueryService;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
  *  - API-09 GET /api/statistics/summary?period=10|50|100|ALL&basisRound=  (안 보내면 100회·최신 회차 기준)
  *  - API-10 GET /api/statistics/numbers?period=10|50|100|ALL  또는  fromRound=&toRound=  (회차 범위가 있으면 범위 우선)
  *  - API-11 GET /api/statistics/prizes?fromRound=&toRound=  (안 보내면 최근 20회, 최대 200회)
+ *  - API-41 GET /api/statistics/regions?fromRound=&toRound=  (안 보내면 최근 20회, 최대 200회) 시도별 당첨 건수와 앞 구간 대비 1등 증감률
  *
  * period 를 숫자(Integer)가 아닌 문자열로 받는 이유: "abc" 같은 값이 와도 스프링의 기본 오류 형식이 아니라
  * 우리 공통 응답 형식(INVALID_INPUT)으로 돌려주기 위해서다. (검사는 StatQueryService.parsePeriod)
@@ -31,12 +34,14 @@ public class StatController {
     private final StatQueryService statQueryService;
     private final StatAnalysisService analysisService;
     private final PrizeTrendService prizeTrendService;
+    private final RegionStatService regionStatService;
 
     public StatController(StatQueryService statQueryService, StatAnalysisService analysisService,
-                          PrizeTrendService prizeTrendService) {
+                          PrizeTrendService prizeTrendService, RegionStatService regionStatService) {
         this.statQueryService = statQueryService;
         this.analysisService = analysisService;
         this.prizeTrendService = prizeTrendService;
+        this.regionStatService = regionStatService;
     }
 
     @GetMapping("/patterns")
@@ -61,5 +66,11 @@ public class StatController {
     public ApiResponse<PrizeTrendResponse> prizes(@RequestParam(name = "fromRound", required = false) Integer fromRound,
                                                   @RequestParam(name = "toRound", required = false) Integer toRound) {
         return ApiResponse.ok(prizeTrendService.prizes(fromRound, toRound));
+    }
+
+    @GetMapping("/regions")
+    public ApiResponse<RegionStatResponse> regions(@RequestParam(name = "fromRound", required = false) Integer fromRound,
+                                                   @RequestParam(name = "toRound", required = false) Integer toRound) {
+        return ApiResponse.ok(regionStatService.regions(fromRound, toRound));
     }
 }
