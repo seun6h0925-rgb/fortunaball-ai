@@ -18,7 +18,7 @@ export default function RegionsCard({ q }) {
     <section className="card home-card home__regions home-regions">
       <div className="home-card__head">
         <h2 className="home-card__title">최근 상승 지역</h2>
-        <Link to="/stats" className="home-card__more">
+        <Link to="/map" className="home-card__more">
           더보기 <Icon name="chevronRight" size={14} />
         </Link>
       </div>

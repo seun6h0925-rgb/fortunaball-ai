@@ -151,3 +151,13 @@
 .addiff { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
 .addiff li { display: grid; gap: 2px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
 .addiff span { color: var(--on-navy-soft); }
+
+/* AI 운영(AD-09) */
+.adtabs--tight { margin-bottom: 0; }
+.admeter { margin-bottom: 14px; }
+.admeter p { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 14px; }
+.admeter span { color: var(--on-navy-soft); }
+.adbarrow { display: grid; grid-template-columns: 90px minmax(0, 1fr) 48px; align-items: center; gap: 12px; margin-bottom: 12px; font-size: 14px; }
+.adbarrow b { text-align: right; }
+.adpanel__head--sp { margin-top: 22px; }
+.admono { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
