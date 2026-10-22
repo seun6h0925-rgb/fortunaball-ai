@@ -139,3 +139,15 @@
 .adact { display: flex; align-items: center; gap: 10px; margin-top: 16px; }
 .adact__sel { margin-left: auto; }
 .adbtn--bad { border-color: rgba(255, 138, 138, 0.6); color: #ffb4b4; }
+
+/* 판매점(AD-08) */
+.adstores__left, .adstores__right { display: grid; gap: 18px; align-content: start; min-width: 0; }
+.adform__in { width: 100%; height: 40px; margin-bottom: 10px; }
+.adform__two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.adminis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+.adminis div { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--line-card); border-radius: 12px; }
+.adminis span { font-size: 12px; color: var(--on-navy-mute); }
+.adminis b { font-size: 20px; }
+.addiff { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 6px; }
+.addiff li { display: grid; gap: 2px; padding: 8px 0; border-bottom: 1px solid var(--line-soft); font-size: 13px; }
+.addiff span { color: var(--on-navy-soft); }
