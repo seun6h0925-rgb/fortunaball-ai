@@ -1,0 +1,140 @@
+/* 패턴 모아보기(UI-02B). 모바일·태블릿: 카드 한 줄씩(태블릿은 2열) / PC: 3열 */
+
+.pat {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ── 기간 선택 줄 ── */
+.pat__bar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px;
+}
+.pat__bar-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+}
+.pat__periods {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.pat__periods .sub {
+  margin-right: 2px;
+}
+.pat__periods .chip {
+  padding: 0 11px;
+}
+.pat__note {
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--on-navy-soft);
+}
+
+/* ── 패턴 카드 ── */
+.pat__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+  transition: opacity var(--t-fast) var(--ease);
+}
+.pat__grid.is-loading {
+  opacity: 0.55;
+  pointer-events: none;
+}
+.pcard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 20px;
+}
+.pcard__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.pcard__name {
+  font-size: 20px;
+  font-weight: 700;
+  word-break: keep-all; /* 이름이 줄바꿈될 때 단어 중간에서 끊기지 않게 */
+}
+.pcard__badge {
+  flex: none;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffe9a8;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.pcard__desc {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--on-navy);
+}
+.pcard__sample {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.pcard__balls {
+  display: flex;
+  gap: 6px;
+}
+.pcard__balls .ball {
+  --s: clamp(32px, 10.5vw, 42px);
+}
+.pcard .btn {
+  margin-top: 2px;
+}
+
+@media (min-width: 600px) {
+  .pat__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .pcard__balls .ball {
+    --s: 38px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .pat {
+    gap: 24px;
+  }
+  .pat__bar {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 18px 26px;
+  }
+  .pat__note {
+    max-width: 560px;
+    text-align: right;
+  }
+  .pat__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+  .pcard {
+    padding: 26px 26px 24px;
+  }
+  .pcard__badge {
+    font-size: 13px;
+    padding: 5px 12px;
+  }
+  .pcard__desc {
+    min-height: 3.2em; /* 설명이 한 줄이든 두 줄이든 카드 안의 위치가 맞도록 */
+  }
+  .pcard__balls {
+    gap: 8px;
+  }
+}

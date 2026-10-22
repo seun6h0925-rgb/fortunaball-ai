@@ -11,6 +11,7 @@ import './styles/layout.css'
 import './styles/home.css'
 import './styles/generate.css'
 import './styles/issues.css'
+import './styles/patterns.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

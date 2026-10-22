@@ -8,10 +8,11 @@ import GeneratePage from './pages/GeneratePage.jsx'
 import ResultPage from './pages/ResultPage.jsx'
 import IssuedPage from './pages/IssuedPage.jsx'
 import IssuesPage from './pages/IssuesPage.jsx'
+import PatternsPage from './pages/PatternsPage.jsx'
 import { PAGES } from './app/pages.js'
 
 // 진짜 화면이 연결된 주소. 여기에 없는 주소는 아래에서 "준비 중" 화면으로 연결된다.
-const BUILT = new Set(['/', '/generate', '/generate/result', '/generate/issued', '/issues'])
+const BUILT = new Set(['/', '/generate', '/generate/patterns', '/generate/result', '/generate/issued', '/issues'])
 
 /**
  * 화면 주소 표. 실제 화면을 만들 때마다 이 표에서 element 만 바꿔 끼운다.
@@ -23,6 +24,7 @@ export default function App() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/generate" element={<GeneratePage />} />
+        <Route path="/generate/patterns" element={<PatternsPage />} />
         <Route path="/generate/result" element={<ResultPage />} />
         <Route path="/generate/issued" element={<IssuedPage />} />
         <Route path="/issues" element={<IssuesPage />} />
