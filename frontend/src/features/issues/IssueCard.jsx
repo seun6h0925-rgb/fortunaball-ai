@@ -10,8 +10,9 @@ import { gameLabel } from '../generate/gameLabel.js'
  *  - item  : 회차·발급시간·게임 수·검증 상태·발급 코드 (목록 항목과 상세 조회 결과가 같은 이름을 써서 둘 다 넣을 수 있다)
  *  - games : 보여 줄 게임들 [{ order, numbers }]. 목록은 첫 게임 하나, 코드 조회 결과는 전체 게임.
  *            2개 이상이면 줄마다 "게임 A" 이름을 붙인다.
+ *  - onDelete : 주면 [삭제] 버튼이 생긴다. (이 기기 목록의 카드에만 준다. 코드로 찾은 결과 카드에는 주지 않는다)
  */
-export default function IssueCard({ item, games }) {
+export default function IssueCard({ item, games, onDelete }) {
   const toast = useToast()
 
   async function copy() {
@@ -62,6 +63,11 @@ export default function IssueCard({ item, games }) {
           <Link to={`/analyst?code=${item.issueCode}`} className="btn btn--ghost">
             분석 보기
           </Link>
+          {onDelete && (
+            <button type="button" className="btn btn--ghost icard__delete" onClick={() => onDelete(item)}>
+              삭제
+            </button>
+          )}
         </div>
       </div>
     </article>

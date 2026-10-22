@@ -16,3 +16,9 @@ export const fetchIssueList = (signal, page = 0, size = 10) =>
  *           games[{gameOrder, numbers[6]}], verificationStatus, verificationLabel }
  */
 export const fetchIssueDetail = (code) => api.get(`/api/issues/${encodeURIComponent(code)}`)
+
+/**
+ * API-67 이 기기의 발급 내역 목록에서 지우기. 서버 기록은 남고 이 기기 목록에서만 빠진다. (코드로는 계속 조회 가능)
+ * 받는 값: { issueCode }
+ */
+export const hideIssue = (code) => api.del(`/api/issues/${encodeURIComponent(code)}`)

@@ -146,6 +146,7 @@
 }
 .icard__btns {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .icard__btns .btn {
@@ -205,10 +206,10 @@
   /* 카드가 가로로 펼쳐진다: [회차·시간] [번호] [코드·버튼] */
   .icard {
     display: grid;
-    grid-template-columns: minmax(150px, 1fr) auto minmax(190px, auto);
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-    gap: 24px;
-    padding: 22px 28px;
+    gap: 20px;
+    padding: 22px 24px;
   }
   .icard__head {
     justify-content: flex-start;
@@ -227,9 +228,30 @@
     max-width: none;
     width: 268px; /* 공 6개(38px) + 사이 간격 5칸(8px) */
   }
-  .icard__foot {
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 12px;
+  .icard__btns .btn {
+    padding: 0 12px;
   }
+  /* 코드·버튼은 카드 아래 한 줄로 (옆에 두면 목록 폭이 좁을 때 박스를 넘는다) */
+  .icard__foot {
+    grid-column: 1 / -1;
+    flex-wrap: nowrap;
+    padding-top: 14px;
+    border-top: 1px solid rgba(159, 179, 214, 0.22);
+  }
+}
+
+/* ── 삭제 버튼, 쪽 이동 중 목록 흐림 ── */
+.icard__btns .icard__delete {
+  border-color: rgba(255, 138, 138, 0.5);
+  color: var(--danger);
+}
+.issues__list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: opacity var(--t-fast) var(--ease);
+}
+.issues__list.is-loading {
+  opacity: 0.5;
+  pointer-events: none;
 }
