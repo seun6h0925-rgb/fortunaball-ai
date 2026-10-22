@@ -48,7 +48,7 @@ export default function VerifyForm({ onDone }) {
 
       <label className="vfy__field">
         <span>발급 코드</span>
-        <input className="gen__input" type="text" autoComplete="off" autoCapitalize="characters" spellCheck={false}
+        <input className="vfy__input" type="text" autoComplete="off" autoCapitalize="characters" spellCheck={false}
           maxLength={20} placeholder="발급 코드를 입력하세요" value={code}
           onChange={(e) => { setCode(e.target.value); setError('') }} />
       </label>
@@ -65,7 +65,7 @@ export default function VerifyForm({ onDone }) {
 
       <label className="vfy__field">
         <span>한마디 (선택)</span>
-        <textarea className="gen__input vfy__text" rows={3} maxLength={COMMENT_MAX}
+        <textarea className="vfy__input vfy__text" rows={3} maxLength={COMMENT_MAX}
           placeholder="당첨 소감을 남겨 보세요. 승인되면 공개돼요." value={comment}
           onChange={(e) => setComment(e.target.value)} />
         <small className="vfy__count">{comment.length}/{COMMENT_MAX}</small>

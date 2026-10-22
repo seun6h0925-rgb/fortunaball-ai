@@ -31,3 +31,20 @@
   .vfy__grid { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 24px; }
   .vfy__form, .vfy__done, .vfy__steps { padding: 26px 28px; }
 }
+
+/* 입력칸: 테두리가 있는 칸 (gen__input 은 테두리 없는 칸이라 쓰지 않는다) */
+.vfy__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1.5px solid rgba(159, 179, 214, 0.45);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--on-navy);
+  caret-color: #fff;
+  font: inherit;
+  font-size: 16px;
+  outline: 0;
+}
+.vfy__input:focus { border-color: #7cc8fc; }
+.vfy__input::placeholder { color: var(--on-navy-mute); }

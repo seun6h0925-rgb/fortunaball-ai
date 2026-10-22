@@ -56,7 +56,20 @@
 .win__input {
   flex: 1;
   min-width: 0;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1.5px solid rgba(159, 179, 214, 0.45);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--on-navy);
+  caret-color: #fff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 400;
+  outline: 0;
 }
+.win__input:focus { border-color: #7cc8fc; }
+.win__input::placeholder { color: var(--on-navy-mute); }
 .win__go {
   flex: none;
   min-width: 76px;
