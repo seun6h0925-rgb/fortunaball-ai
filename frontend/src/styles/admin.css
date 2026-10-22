@@ -161,3 +161,13 @@
 .adbarrow b { text-align: right; }
 .adpanel__head--sp { margin-top: 22px; }
 .admono { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
+
+/* 꿈 상징(AD-10) */
+.adstats--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.adalias { font-style: normal; font-size: 12px; color: var(--on-navy-mute); }
+.adnum { display: inline-flex; align-items: baseline; gap: 3px; margin: 0 8px 4px 0; font-weight: 700; }
+.adnum i { font-style: normal; font-weight: 400; font-size: 11px; color: var(--on-navy-mute); }
+.adnum--x { padding: 4px 10px; border: 1px solid var(--line-chip); border-radius: 999px; background: transparent; color: var(--on-navy); }
+.adnums { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.adform__add { display: grid; grid-template-columns: 80px 1fr auto; gap: 8px; margin-bottom: 10px; }
+.adform__sw { display: flex; align-items: center; justify-content: space-between; margin: 12px 0; font-size: 14px; }
