@@ -284,17 +284,25 @@ class AnalystServiceTest {
     }
 
     @Test
-    void 사용법_질문은_AI가_대화로_설명하고_횟수를_쓰며_사용_방법_보기_버튼이_붙는다() {
-        agentReturns(Outcome.ANSWER, "이렇게 말해 보세요. \"1000회 당첨번호 알려줘\"처럼요.", List.of(), null);
-
+    void 사용법_질문은_고정_문구이고_차감하지_않으며_사용_방법_보기_버튼이_붙는다() {
         AnalystResponse r = service.answer(ask("사용법 알려줘"), GUEST, IP);
 
-        assertNull(r.policyCode());
-        assertTrue(r.answer().contains("이렇게 말해 보세요"));
+        assertEquals("USAGE_GUIDE", r.policyCode());
+        assertTrue(r.message().contains("도와드려요"));
         assertEquals("OPEN_GUIDE", r.action());
         assertEquals(3, r.suggestions().size());
-        assertTrue(r.charged());
-        verify(gateway).open(any(AiFeature.class), anyString(), anyString());
+        assertFalse(r.charged());
+        verify(gateway, never()).open(any(), anyString(), anyString());
+        verify(agent, never()).run(any(), any(), anyString(), any(), anyString());
+    }
+
+    @Test
+    void 변형된_인사도_고정_문구이고_차감하지_않는다() {
+        AnalystResponse r = service.answer(ask("요~ 하이"), GUEST, IP);
+
+        assertEquals("SMALL_TALK_GREETING", r.policyCode());
+        assertFalse(r.charged());
+        verify(gateway, never()).open(any(), anyString(), anyString());
     }
 
     @Test

@@ -44,8 +44,20 @@ public class AnalystSmallTalk {
             "고마워", "고마워요", "고맙습니다", "감사", "감사해요", "감사합니다", "감사드려요", "땡큐", "thanks", "thankyou",
             "도움됐어", "도움됐어요", "도움이됐어", "도움이됐어요", "고마워요도움됐어요");
 
+    /**
+     * 인사·감사 "말뿌리": 이 말들을 지우고 3글자 이하가 남으면 인사·감사로 본다. ("요~ 하이", "안녕하세요 반갑습니다", "정말 감사합니다!")
+     * 긴 이름이 먼저 지워지도록 긴 순서로 적는다. 로또 질문이 섞인 말("하이 번호 만들어줘")은 남는 글자가 많아 걸리지 않는다.
+     */
+    private static final List<String> GREETING_STEMS = List.of(
+            "처음뵙겠습니다", "안녕하십니까", "안녕하셔요", "안녕하세요", "여보세요", "반갑습니다", "반가워요", "반가워",
+            "안녕", "안뇽", "하이", "헬로", "hello", "하세요", "습니다", "요");
+    private static final List<String> THANKS_STEMS = List.of(
+            "고맙습니다", "감사합니다", "감사드려요", "도움이됐", "도움됐", "고마워", "감사해", "감사", "땡큐", "thankyou", "thanks",
+            "정말", "진짜", "너무", "많이", "요", "어요", "습니다", "합니다", "해요", "드려요");
+    private static final int STEM_LEFTOVER_MAX = 3;
+
     private static final List<String> USAGE_WORDS = List.of(
-            "사용법", "사용방법", "이용방법", "어떻게써", "어떻게사용", "어떻게이용", "뭘할수있", "뭐할수있", "무엇을할수",
+            "사용법", "사용방법", "이용방법", "이용법", "쓰는법", "어떻게쓰", "사용하는", "기능이뭐", "어떻게써", "어떻게사용", "어떻게이용", "뭘할수있", "뭐할수있", "무엇을할수",
             "뭘도와", "뭐도와", "도움말", "무슨기능", "어떤기능");
 
     // ------------------------------------------------------------------ 문구 (3개씩 돌려 쓴다)
@@ -107,10 +119,28 @@ public class AnalystSmallTalk {
         if (THANKS.contains(text)) {
             return Optional.of(Kind.THANKS);
         }
+        if (!hasLottoInput && onlyStems(text, GREETING_STEMS, "안녕", "안뇽", "하이", "헬로", "hello", "반가", "반갑", "여보세요", "뵙겠")) {
+            return Optional.of(Kind.GREETING);
+        }
+        if (!hasLottoInput && onlyStems(text, THANKS_STEMS, "고마", "고맙", "감사", "땡큐", "thank", "도움")) {
+            return Optional.of(Kind.THANKS);
+        }
         if (!hasLottoInput && USAGE_WORDS.stream().anyMatch(text::contains)) {
             return Optional.of(Kind.USAGE);
         }
         return Optional.empty();
+    }
+
+    /** 핵심 단어(core)가 하나라도 있고, 말뿌리를 모두 지웠을 때 남는 글자가 얼마 안 되면 true */
+    static boolean onlyStems(String text, List<String> stems, String... core) {
+        if (text.length() > 20 || java.util.Arrays.stream(core).noneMatch(text::contains)) {
+            return false;
+        }
+        String left = text;
+        for (String stem : stems) {
+            left = left.replace(stem, "");
+        }
+        return left.length() <= STEM_LEFTOVER_MAX;
     }
 
     // ------------------------------------------------------------------ 답 고르기

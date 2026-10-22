@@ -41,6 +41,13 @@ public class DreamChat {
         return new AiRequest(AiRole.ANSWER, SYSTEM, input, 800);   // 생각에 쓰는 토큰까지 감안해 넉넉히 둔다
     }
 
+    /** 꿈 표현은 있지만 상징·번호가 없을 때: 이 답 바로 아래에 "통계 번호를 만들어 볼까요?" 버튼이 붙는다. */
+    public AiRequest requestThenAsk(String text) {
+        String input = "이 답 아래에 화면이 '통계로 번호를 만들어 볼까요?' 선택 버튼을 함께 보여 줍니다. "
+                + "꿈이 기억나지 않거나 특별한 상징이 없어도 통계로 번호를 만들 수 있다고 자연스럽게 안내하세요.\n사용자의 말: " + text;
+        return new AiRequest(AiRole.ANSWER, SYSTEM, input, 800);
+    }
+
     /** 쓸 수 있는 글이면 다듬어 돌려주고, 아니면 null (호출한 쪽이 고정 문구로 대신한다) */
     public String clean(String aiText) {
         String text = aiText == null ? "" : aiText.trim();

@@ -36,9 +36,8 @@ import org.springframework.stereotype.Service;
  *  1. 입력 검사 (질문 1~300자, context 는 비움/MAP, 위치는 위도·경도가 함께 있어야 함, 이전 대화 정리)
  *  2. 규칙 정책 검사 (당첨 보장·구매 유도·절박한 요청·위치 꺼짐) → 걸리면 고정 응답. AI 호출·차감 없음
  *     ⚠ 주제 이탈 키워드(OFF_TOPIC_ANALYST, OFF_TOPIC_MAP)에 걸려도 여기서 막지 않는다. 인사·잡담인지 아닌지는 AI 가 판단한다.
- *  2-1. 딱 봐도 단순한 인사·감사·사용법 질문("안녕", "고마워", "사용법 알려줘")은 고정 문구로 응답. AI 호출·차감 없음
- *     ⚠ 대화 우선: 고정 문구는 "안녕", "고마워" 같은 단순 인사·감사와 정책 차단, 주제 이탈 안내에만 쓴다.
- *       사용법 질문("사용법 알려줘")은 AI 가 예시를 곁들여 대화로 풀어 설명한다. (횟수 1회 사용, 응답에 [사용 방법 보기] 버튼 action 은 붙는다)
+ *  2-1. 짧은 인사·감사·사용법 질문("안녕", "요~ 하이", "고마워", "사용법 알려줘")은 고정 문구로 응답. AI 호출·차감 없음
+ *     ⚠ 고정 문구는 짧은 인사·감사, 사용법 질문, 정책 차단, 주제 이탈 안내에만 쓴다. (모두 차감 없음) 그 밖의 말은 AI 가 대화로 받고 1회를 쓴다.
  *  3. 무료 횟수 1회 차감 → AnalystAgent: AI 가 질문과 대화를 보고 조회 도구를 골라 쓰며 답한다
  *     - 가벼운 인사·잡담이면 AI 가 짧게 받아 주고 횟수를 쓴다. (AI 가 쓴 글은 모두 1회. 글을 못 쓴 경우만 돌려준다)
  *     - 도와드릴 수 없는 이야기라고 AI 가 판단하면 고정 문구(3개 번갈아)로 응답하고 횟수를 돌려준다
@@ -94,10 +93,10 @@ public class AnalystService {
             return fixed(parsed.type().name(), hit.policyCode(), hit.message(), guest, clientIp, List.of(), null);
         }
 
-        // 2-1) 딱 봐도 단순한 인사·감사는 고정 문구. 사용법 질문은 AI 가 대화로 설명하므로 아래로 넘긴다.
+        // 2-1) 짧은 인사·감사와 사용법 질문은 고정 문구 (AI 호출·차감 없음). 사용법에는 [사용 방법 보기] 버튼이 붙는다.
         Kind kind = smallTalk.detect(question, parsed.hasLottoInput()).orElse(null);
-        boolean usageAsk = kind == Kind.USAGE;
-        if (kind != null && !usageAsk) {
+        boolean usageAsk = false;
+        if (kind != null) {
             Reply reply = smallTalk.reply(kind, scene, history.isEmpty());
             return fixed("GENERAL", AnalystSmallTalk.codeOf(kind), reply.message(), guest, clientIp,
                     reply.suggestions(), reply.action());

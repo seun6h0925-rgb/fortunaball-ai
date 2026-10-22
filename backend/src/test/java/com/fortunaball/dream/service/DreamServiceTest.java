@@ -294,12 +294,24 @@ class DreamServiceTest {
 
         assertEquals("NO_MATCH", r.matchResult());
         assertEquals(DreamResponse.STEP_ASK_STAT_NUMBERS, r.step());
+        assertEquals(DreamMessages.REPLIES_STAT, r.quickReplies());
+        assertTrue(r.charged());   // 앞의 말은 AI 가 받아 주므로 횟수 1회
+        assertTrue(r.numbers().isEmpty());
+        verify(gateway, times(1)).open(AiFeature.DREAM, GUEST.value(), IP);
+    }
+
+    @Test
+    void 꿈에서_나온_번호가_없을_때_AI_글을_못_쓰면_횟수를_돌려주고_고정_문구로_묻는다() {
+        when(session.call(any(AiRequest.class))).thenReturn(new AiResponse("[OFF_TOPIC]", "m", 1, 1));
+
+        DreamResponse r = service.interpret(first("꿈에서 아무것도 기억이 안 나는데 기분이 이상했어요"), GUEST, IP);
+
+        assertEquals(DreamResponse.STEP_ASK_STAT_NUMBERS, r.step());
         assertEquals("DREAM_LOW_RELEVANCE", r.policyCode());
         assertEquals(DreamMessages.REPLIES_STAT, r.quickReplies());
         assertFalse(r.charged());
-        assertTrue(r.numbers().isEmpty());
+        verify(session).refund();
         verify(gateway).recordBlocked(AiFeature.DREAM, "DREAM_LOW_RELEVANCE");
-        neverOpened();
     }
 
     // ------------------------------------------------------------------ 처음 풀이: 번호 개수별

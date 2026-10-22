@@ -247,8 +247,17 @@ public class DreamService {
             return respond(r, turn);
         }
 
-        // 꿈에서 나온 번호가 하나도 없으면 AI 없이 "통계 번호를 만들어 볼까요?"를 묻는다.
+        // 꿈에서 나온 번호가 하나도 없으면 "통계 번호를 만들어 볼까요?"를 묻는다.
+        // 대화 우선: 앞의 말은 AI 가 상황에 맞게 받아 준다. (횟수 1회) AI 글을 못 쓰면 횟수를 돌려주고 고정 문구로 묻는다.
         if (m.base().isEmpty()) {
+            String said = chat.clean(turn.session().call(chat.requestThenAsk(text)).text());
+            if (said != null) {
+                Reply r = Reply.fixed(DreamMatchResult.NO_MATCH, DreamResponse.STEP_ASK_STAT_NUMBERS, said);
+                r.quickReplies = DreamMessages.REPLIES_STAT;
+                r.suggestions = DreamMessages.SUGGESTIONS;
+                return respond(r, turn);
+            }
+            turn.refund();
             gateway.recordBlocked(AiFeature.DREAM, DreamMessages.CODE_LOW_RELEVANCE);
             Reply r = Reply.fixed(DreamMatchResult.NO_MATCH, DreamResponse.STEP_ASK_STAT_NUMBERS, messages.askStatNumbers());
             r.policyCode = DreamMessages.CODE_LOW_RELEVANCE;
