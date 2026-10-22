@@ -2,14 +2,15 @@ import Icon from '../../components/ui/Icon.jsx'
 import { useToast } from '../toast/toastContext.js'
 
 /**
- * 공유하기 버튼. 휴대폰처럼 공유 창을 쓸 수 있으면 그 창을 열고,
+ * 공유하기 버튼. url 을 주면 그 주소를, 안 주면 지금 화면 주소를 공유한다.
+ * (번호 결과처럼 이 기기에만 있는 화면은 서비스 주소를 넘긴다) 휴대폰처럼 공유 창을 쓸 수 있으면 그 창을 열고,
  * 아니면 주소를 복사하고 "복사했어요" 알림을 보여준다.
  */
-export default function ShareButton({ variant = 'compact', title }) {
+export default function ShareButton({ variant = 'compact', title, url: shareUrl }) {
   const toast = useToast()
 
   async function onShare() {
-    const url = window.location.href
+    const url = shareUrl || window.location.href
     const data = { title: title || document.title, url }
     try {
       if (navigator.share) {

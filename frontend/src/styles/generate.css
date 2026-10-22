@@ -171,3 +171,131 @@
   .gen__input { font-size: 24px; }
   .gen__hint { margin: -6px 0 0 6px; }
 }
+
+/* ───────── 번호 생성 결과(UI-03) ─────────
+   모바일·태블릿: 번호 카드 → 버튼들 → 유의사항 (한 줄씩) / PC: 번호 카드(왼쪽) + 버튼 카드(오른쪽) */
+.res__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+.res__games {
+  padding: 8px 20px;
+}
+.res__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.res__game {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 0;
+  border-top: 1px solid rgba(159, 179, 214, 0.28);
+}
+.res__game:first-child {
+  border-top: 0;
+}
+.res__name {
+  font-size: 14px;
+  color: var(--on-navy-mute);
+}
+/* 공은 칸 폭에 맞춰 같이 줄어든다 (홈 화면의 번호 줄과 같은 방식) */
+.res__balls {
+  --ball: 40px;
+  --fs: 16px;
+  container-type: inline-size;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.res__balls .ball {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  height: auto;
+  max-width: var(--ball);
+  aspect-ratio: 1 / 1;
+  font-size: min(var(--fs), 5.4cqw);
+}
+
+/* 버튼 모음: 모바일은 카드 없이 하늘색 배경 위에 바로 놓는다 (목업) */
+.res__side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.res__row {
+  display: flex;
+  gap: 12px;
+}
+.res__row > .btn,
+.res__row > .share-btn,
+.res__row > .like-btn {
+  flex: 1;
+}
+.res__row .btn {
+  min-height: 44px;
+}
+.res__row .btn[aria-disabled='true'] {
+  pointer-events: none;
+  opacity: 0.5;
+}
+.res__temp {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--on-navy-soft);
+}
+.res__temp b {
+  color: #fff;
+}
+.spinner--light {
+  border-color: rgba(124, 200, 252, 0.25);
+  border-top-color: #7cc8fc;
+}
+
+@media (min-width: 600px) {
+  .res__balls { --ball: 46px; --fs: 18px; }
+  .res__game {
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+  }
+  .res__name { width: 64px; flex: none; }
+  .res__balls { flex: 1; max-width: 420px; }
+}
+
+@media (min-width: 1024px) {
+  .res__grid {
+    grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+  }
+  .res__games { padding: 24px 32px 12px; }
+  .res__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding-bottom: 14px;
+  }
+  .res__head h2 { font-size: 20px; font-weight: 700; }
+  .res__head .sub { font-size: 13px; }
+  .res__game { padding: 22px 0; gap: 28px; }
+  .res__name { width: 70px; font-size: 16px; }
+  .res__balls { --ball: 52px; --fs: 20px; max-width: 400px; gap: 12px; }
+
+  .res__side {
+    gap: 16px;
+    padding: 28px;
+    border-radius: var(--radius-card);
+    border: 1px solid var(--line-card);
+    background: var(--card-navy);
+    box-shadow: var(--shadow-card);
+  }
+  .res__temp {
+    padding-top: 20px;
+    border-top: 1px solid rgba(159, 179, 214, 0.28);
+  }
+}

@@ -17,3 +17,11 @@ export { fetchCurrentRound } from '../home/homeApi.js'
  */
 export const generateNumbers = ({ gameCount, patternCode }) =>
   api.post('/api/numbers/generate', { gameCount, patternCode: patternCode || null })
+
+/**
+ * API-04 발급 확정: 임시 결과를 저장하고 발급 코드를 받는다. 번호는 보내지 않고 토큰만 보낸다.
+ * 받는 값: { issueCode, targetRound, drawDate, gameCount, patternCode, patternName,
+ *           games[{gameOrder, numbers[6], replaced}], replacedGames[{gameOrder, before[6], after[6]}] }
+ * (같은 조합이 이미 3번 발급됐으면 서버가 그 게임만 다른 번호로 바꾸고 replaced 로 알려 준다)
+ */
+export const confirmIssue = (confirmToken) => api.post('/api/issues', { confirmToken })

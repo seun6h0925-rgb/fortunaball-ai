@@ -34,3 +34,23 @@ export function clearGenerated() {
     /* 무시 */
   }
 }
+
+// 발급이 끝난 결과(발급 코드 포함). 발급 완료 화면(UI-03B)이 읽는다. 만료는 없다. (이미 저장된 번호이므로)
+const ISSUED_KEY = 'fortunaball.issued'
+
+export function saveIssued(data) {
+  try {
+    sessionStorage.setItem(ISSUED_KEY, JSON.stringify(data))
+  } catch {
+    /* 무시 */
+  }
+}
+
+export function loadIssued() {
+  try {
+    const raw = sessionStorage.getItem(ISSUED_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}

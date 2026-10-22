@@ -5,7 +5,11 @@ import ComingSoonPage from './pages/ComingSoonPage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
 import HomePage from './pages/HomePage.jsx'
 import GeneratePage from './pages/GeneratePage.jsx'
+import ResultPage from './pages/ResultPage.jsx'
 import { PAGES } from './app/pages.js'
+
+// 진짜 화면이 연결된 주소. 여기에 없는 주소는 아래에서 "준비 중" 화면으로 연결된다.
+const BUILT = new Set(['/', '/generate', '/generate/result'])
 
 /**
  * 화면 주소 표. 실제 화면을 만들 때마다 이 표에서 element 만 바꿔 끼운다.
@@ -17,7 +21,8 @@ export default function App() {
       <Route element={<AppLayout />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/generate" element={<GeneratePage />} />
-        {PAGES.filter((p) => p.path !== '/' && p.path !== '/generate').map((p) => (
+        <Route path="/generate/result" element={<ResultPage />} />
+        {PAGES.filter((p) => !BUILT.has(p.path)).map((p) => (
           <Route key={p.path} path={p.path} element={<ComingSoonPage title={p.title} />} />
         ))}
         <Route path="/menu" element={<FullMenuPage />} />
