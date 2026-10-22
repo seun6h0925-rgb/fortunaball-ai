@@ -148,12 +148,16 @@ CREATE TABLE number_issue (
   generation_basis_type  VARCHAR(30)  NULL COMMENT '[추가 2026-10-16] 생성 근거 유형. 예: STAT_PATTERN. 쓰지 않으면 NULL',
   generation_basis_value VARCHAR(50)  NULL COMMENT '[추가 2026-10-16] 생성 근거값. 예: pattern_code(HOT_NUMBER 등)',
   created_at             DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '발급일자',
+  hidden_at              DATETIME     NULL COMMENT '[추가 2026-10-22] 사용자가 이 기기 발급 내역 목록에서 지운 시각. NULL 이면 목록에 보인다. 기록 자체는 지우지 않는다(당첨 검증·통계 유지)',
   PRIMARY KEY (id),
   UNIQUE KEY uk_number_issue_code (issue_code),
   KEY idx_number_issue_guest_created (guest_token, created_at),
   KEY idx_number_issue_target_round (target_round_no),
   CONSTRAINT ck_number_issue_game_count CHECK (game_count >= 1)
 ) ENGINE=InnoDB COMMENT='번호 발급 기록';
+
+-- [기존 DB 변경 2026-10-22] number_issue 에 hidden_at 이 없는 DB 에서는 아래 한 줄을 한 번만 실행한다.
+--   ALTER TABLE number_issue ADD COLUMN hidden_at DATETIME NULL COMMENT '사용자가 이 기기 발급 내역 목록에서 지운 시각. NULL 이면 목록에 보인다' AFTER created_at;
 
 CREATE TABLE issue_number (
   id              BIGINT      NOT NULL AUTO_INCREMENT COMMENT '발급 번호 고유번호',

@@ -9,6 +9,7 @@ import com.fortunaball.issue.domain.IssueNumber;
 import com.fortunaball.issue.domain.NumberIssue;
 import com.fortunaball.issue.domain.VerificationStatus;
 import com.fortunaball.issue.dto.IssueDetailResponse;
+import com.fortunaball.issue.dto.IssueHideResponse;
 import com.fortunaball.issue.dto.IssueListResponse;
 import com.fortunaball.issue.repository.IssueNumberRepository;
 import com.fortunaball.issue.repository.IssueNumberRepository.VerificationCount;
@@ -19,6 +20,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +34,7 @@ import java.util.regex.Pattern;
  *  - 상세(API-05)는 "발급코드를 아는 사람"이면 볼 수 있다. (게스트 토큰을 요구하지 않는다 — API 명세서 기준)
  *    그 대신 코드를 무작위로 대입하는 공격을 막으려고 접속지(IP)별 조회 횟수를 제한한다. (429)
  *  - 형식이 틀린 코드와 없는 코드는 똑같이 404 로 답한다. (어떤 코드가 존재하는지 알아내는 단서를 주지 않으려고)
- *  - 목록(API-42)은 게스트 토큰으로 "이 기기에서 발급한 것"만 보여준다.
+ *  - 목록(API-42)은 게스트 토큰으로 "이 기기에서 발급한 것"만 보여준다. 사용자가 지운 건은 빠진다. (지우기 = API-67)
  *  - 검증 상태는 저장하지 않고 winning_verification 행 수로 계산한다. 당첨 검증 기능 전에는 모두 "검증 대기".
  */
 @Service
@@ -105,6 +107,25 @@ public class IssueQueryService {
         }).toList();
 
         return new IssueListResponse(items, page, size, result.getTotalElements(), result.getTotalPages());
+    }
+
+    /** 발급 건별 첫 번째 게임 번호 (목록 카드용). 첫 게임이 없는 건은 맵에 없어 null 로 나간다 */
+    /**
+     * API-67: 이 기기의 발급 내역 목록에서 한 건 지우기. 기록은 DB 에 남기고 목록에서만 숨긴다. (이 클래스에서 유일하게 DB 를 바꾸는 기능)
+     *  - 내 기기(게스트)가 발급한 건만 지울 수 있다. 없는 코드·남의 코드는 똑같이 404 (어떤 코드가 있는지 알려 주지 않으려고)
+     *  - 이미 지운 건을 또 지워도 오류 없이 성공으로 답한다. (더블 클릭·재시도 대비)
+     */
+    @Transactional
+    public IssueHideResponse hide(GuestToken guest, String issueCode) {
+        String code = issueCode == null ? "" : issueCode.trim().toUpperCase();
+        NumberIssue issue = CODE_FORMAT.matcher(code).matches() ? issueRepo.findByIssueCode(code).orElse(null) : null;
+        if (issue == null || !issue.getGuestToken().equals(guest.value())) {
+            throw new BusinessException(ErrorCode.NOT_FOUND,
+                    "지울 발급 내역을 찾을 수 없어요.",
+                    "발급 내역 숨기기 대상 없음/다른 기기: " + guest);
+        }
+        issue.hide(LocalDateTime.now());
+        return new IssueHideResponse(issue.getIssueCode());
     }
 
     /** 발급 건별 첫 번째 게임 번호 (목록 카드용). 첫 게임이 없는 건은 맵에 없어 null 로 나간다 */
