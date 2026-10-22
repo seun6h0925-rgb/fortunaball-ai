@@ -1,0 +1,235 @@
+/* 발급 내역 조회(UI-04). 모바일·태블릿: 코드 조회 → (조회 결과) → 내 발급 내역 한 줄씩 / PC: 왼쪽 조회 카드 + 오른쪽 목록 */
+
+.issues__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 16px;
+}
+.issues__title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+}
+.issues__main,
+.issues__section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.issues__main {
+  gap: 20px;
+}
+.issues__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* 코드 조회: 모바일은 카드 없이 하늘색 배경 위에 바로 놓는다 (목업) */
+.issues__find {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--text);
+}
+.issues__find-row {
+  display: flex;
+  gap: 10px;
+}
+.issues__field {
+  flex: 1;
+  min-width: 0;
+}
+.issues__input {
+  font-size: 16px;
+  font-weight: 500;
+}
+.issues__input::placeholder {
+  color: #7b8cab;
+  font-weight: 400;
+}
+.issues__go {
+  flex: none;
+  min-width: 74px;
+  min-height: 56px;
+  padding: 0 22px;
+  font-size: 16px;
+}
+.issues__find-note {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--on-navy-soft);
+}
+.issues__skeleton {
+  height: 180px;
+  border-radius: var(--radius-card);
+}
+.issues__more {
+  align-self: center;
+  min-width: 160px;
+}
+
+/* ── 발급 내역 카드 ── */
+.icard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+}
+.icard__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.icard__round {
+  font-size: 18px;
+  font-weight: 700;
+}
+.icard__badge {
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: #d7e6fb;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.icard__badge.is-error {
+  background: #ffd9d9;
+  color: #7a1f1f;
+}
+.icard__meta {
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--on-navy-mute);
+}
+.icard__games {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.icard__game {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.icard__name {
+  font-size: 13px;
+  color: var(--on-navy-mute);
+}
+.icard .res__balls {
+  --ball: 36px;
+  --fs: 15px;
+  gap: 6px;
+}
+.icard__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.icard__code {
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.icard__code .sub {
+  margin-right: 4px;
+}
+.icard__btns {
+  display: flex;
+  gap: 8px;
+}
+.icard__btns .btn {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+
+@media (min-width: 600px) {
+  .icard .res__balls {
+    --ball: 38px;
+    max-width: 320px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .issues__grid {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 2fr);
+    gap: 24px;
+    align-items: start;
+  }
+  .issues__title {
+    font-size: 18px;
+  }
+  .issues__main .issues__title {
+    font-size: 20px;
+    padding-left: 4px;
+  }
+  .issues__find {
+    gap: 16px;
+    padding: 28px;
+    border: 1px solid var(--line-card);
+    background: var(--card-navy);
+    box-shadow: var(--shadow-card);
+    color: var(--on-navy);
+  }
+  .issues__find .issues__title {
+    color: #fff;
+  }
+  .issues__find-row {
+    flex-direction: column;
+  }
+  .issues__field {
+    flex: none;
+    height: 52px;
+    box-shadow: none;
+  }
+  .issues__go {
+    width: 100%;
+    min-height: 52px;
+  }
+  .issues__find-note {
+    padding-top: 18px;
+    border-top: 1px solid rgba(159, 179, 214, 0.28);
+  }
+
+  /* 카드가 가로로 펼쳐진다: [회차·시간] [번호] [코드·버튼] */
+  .icard {
+    display: grid;
+    grid-template-columns: minmax(150px, 1fr) auto minmax(190px, auto);
+    align-items: center;
+    gap: 24px;
+    padding: 22px 28px;
+  }
+  .icard__head {
+    justify-content: flex-start;
+    gap: 12px;
+  }
+  .icard__round {
+    font-size: 20px;
+  }
+  .icard__meta {
+    line-height: 1.6;
+  }
+  .icard .res__balls {
+    --ball: 38px;
+    --fs: 15px;
+    gap: 8px;
+    max-width: none;
+    width: 268px; /* 공 6개(38px) + 사이 간격 5칸(8px) */
+  }
+  .icard__foot {
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 12px;
+  }
+}

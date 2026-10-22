@@ -10,6 +10,7 @@ import './styles/components.css'
 import './styles/layout.css'
 import './styles/home.css'
 import './styles/generate.css'
+import './styles/issues.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

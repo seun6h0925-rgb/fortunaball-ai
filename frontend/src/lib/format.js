@@ -25,3 +25,13 @@ export function formatDrawDate(dateText) {
 export function formatRate(rate) {
   return `${Math.abs(rate).toFixed(1)}%`
 }
+
+/** "2026-10-15T13:42:10" → "2026.10.15 (목) 13:42". 서버가 한국 시간으로 주는 값이라 시간대 변환 없이 글자 그대로 읽는다 */
+export function formatDateTime(text) {
+  if (!text) return ''
+  const [datePart, timePart = ''] = text.split('T')
+  const [y, m, d] = datePart.split('-').map(Number)
+  const day = WEEKDAYS[new Date(y, m - 1, d).getDay()]
+  const hhmm = timePart.slice(0, 5)
+  return `${y}.${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')} (${day}) ${hhmm}`
+}

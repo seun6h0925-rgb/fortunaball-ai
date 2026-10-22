@@ -12,11 +12,7 @@ import { gameLabel } from '../features/generate/gameLabel.js'
 import MakeTabs from '../features/generate/MakeTabs.jsx'
 import { loadIssued } from '../features/generate/generateStore.js'
 import usePageTitle from '../hooks/usePageTitle.js'
-
-/** "FB7K29QXM4AB" → "FB7K-29QX-M4AB" (읽기 쉽게 네 글자씩 끊어 보여 준다. 복사할 때는 끊지 않은 원래 값) */
-function groupCode(code) {
-  return code.replace(/(.{4})(?=.)/g, '$1-')
-}
+import { groupCode } from '../lib/issueCode.js'
 
 /**
  * 번호 발급 완료(UI-03B).
