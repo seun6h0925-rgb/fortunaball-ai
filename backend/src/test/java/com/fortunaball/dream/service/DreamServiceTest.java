@@ -96,7 +96,7 @@ class DreamServiceTest {
         service = new DreamService(repository, new DreamSymbolMatcher(), new DreamNumberExtractor(),
                 new DreamNumberPicker(), new DreamInterpretationSelector(), new DreamPromptBuilder(), gateway,
                 generateService, new AiPolicyEngine(() -> POLICIES), new DreamMessages(),
-                new DreamReplyReader(new ObjectMapper()), narrator, ranker);
+                new DreamReplyReader(new ObjectMapper()), narrator, ranker, new DreamChat());
 
         when(repository.loadActiveSymbols()).thenReturn(List.of(
                 new SymbolEntry(1, "돼지", List.of("새끼돼지")),
@@ -205,17 +205,41 @@ class DreamServiceTest {
     }
 
     @Test
-    void 너무_짧은_꿈은_오류가_아니라_더_적어_달라는_고정_응답이고_차감하지_않는다() {
+    void 짧은_말도_막지_않고_AI_가_대화로_받으며_횟수_1회를_쓴다() {
+        when(session.call(any(AiRequest.class))).thenReturn(new AiResponse("돼지 꿈이군요! 어떤 장면이었는지 조금 더 들려주세요.", "m", 10, 10));
+
         DreamResponse r = service.interpret(first("돼지"), GUEST, IP);
 
+        assertEquals(DreamResponse.STEP_TALK, r.step());
+        assertEquals("돼지 꿈이군요! 어떤 장면이었는지 조금 더 들려주세요.", r.message());
+        assertTrue(r.charged());
+        assertTrue(r.numbers().isEmpty());
+        assertEquals(DreamMessages.SUGGESTIONS, r.suggestions());
+        verify(gateway, times(1)).open(AiFeature.DREAM, GUEST.value(), IP);
+    }
+
+    @Test
+    void 대화_글에_숫자가_있거나_무관_표시면_횟수를_돌려주고_고정_문구로_안내한다() {
+        when(session.call(any(AiRequest.class))).thenReturn(new AiResponse("이번엔 7번이 좋아요.", "m", 1, 1));
+        DreamResponse withNumber = service.interpret(first("돼지"), GUEST, IP);
+        assertEquals("DREAM_OFF_TOPIC", withNumber.policyCode());
+        assertFalse(withNumber.charged());
+
+        when(session.call(any(AiRequest.class))).thenReturn(new AiResponse("[OFF_TOPIC]", "m", 1, 1));
+        DreamResponse off = service.interpret(first("용"), GUEST, IP);
+        assertEquals("DREAM_OFF_TOPIC", off.policyCode());
+        assertFalse(off.charged());
+        verify(session, times(2)).refund();
+    }
+
+    @Test
+    void 비어_있는_입력은_AI_없이_더_적어_달라는_고정_응답이고_차감하지_않는다() {
+        DreamResponse r = service.interpret(first(""), GUEST, IP);
         assertEquals(DreamResponse.STEP_NEED_MORE, r.step());
         assertEquals("DREAM_TOO_SHORT", r.policyCode());
         assertFalse(r.charged());
-        assertTrue(r.numbers().isEmpty());
-        assertEquals(DreamMessages.SUGGESTIONS, r.suggestions());
         verify(gateway).recordBlocked(AiFeature.DREAM, "DREAM_TOO_SHORT");
         neverOpened();
-        // 비어 있는 입력도 같다
         assertEquals(DreamResponse.STEP_NEED_MORE, service.interpret(new DreamRequest(null, null, null, null, null, null), GUEST, IP).step());
         assertEquals(DreamResponse.STEP_NEED_MORE, service.interpret(null, GUEST, IP).step());
     }
@@ -238,11 +262,21 @@ class DreamServiceTest {
     }
 
     @Test
-    void 꿈이_아닌_입력과_당첨_보장_요구는_정책_고정_응답이고_AI도_번호도_없다() {
+    void 꿈과_거리가_먼_말은_AI_가_대화로_받고_정말_무관하면_고정_문구로_안내한다_당첨_보장_요구는_바로_막는다() {
+        // 조금 벗어난 말: AI 가 짧게 받아 주고 꿈 이야기로 이끈다 (횟수 1회)
+        when(session.call(any(AiRequest.class))).thenReturn(new AiResponse("점심 고민이시군요! 혹시 어젯밤 꿈은 기억나세요?", "m", 1, 1));
+        DreamResponse chat = service.interpret(first("오늘 점심 뭐 먹을지 고민이에요"), GUEST, IP);
+        assertEquals(DreamResponse.STEP_TALK, chat.step());
+        assertTrue(chat.charged());
+        assertTrue(chat.numbers().isEmpty());
+
+        // 정말 무관한 말: AI 가 판단하면 고정 문구, 횟수는 돌려준다
+        when(session.call(any(AiRequest.class))).thenReturn(new AiResponse("[OFF_TOPIC]", "m", 1, 1));
         DreamResponse off = service.interpret(first("오늘 점심 뭐 먹을지 3시에 정해요"), GUEST, IP);
         assertEquals("NO_MATCH", off.matchResult());
         assertEquals("DREAM_OFF_TOPIC", off.policyCode());
         assertTrue(off.message().contains("꿈"));
+        assertFalse(off.charged());
         assertTrue(off.numbers().isEmpty());
         assertEquals(DreamMessages.SUGGESTIONS, off.suggestions());
         verify(gateway).recordBlocked(AiFeature.DREAM, "DREAM_OFF_TOPIC");
@@ -250,7 +284,7 @@ class DreamServiceTest {
         DreamResponse guarantee = service.interpret(first("돼지꿈 꿨어요 당첨번호알려줘"), GUEST, IP);
         assertEquals("GUARANTEE_REQUEST", guarantee.policyCode());
         assertEquals("보장 불가 안내", guarantee.message());
-        neverOpened();
+        verify(gateway, times(2)).open(AiFeature.DREAM, GUEST.value(), IP);   // 위 두 번의 대화만 AI 를 불렀다
         verify(generateService, never()).generateWithNumbers(any(), any(), any(), any());
     }
 
@@ -532,6 +566,20 @@ class DreamServiceTest {
         // 알 수 없는 step 이면 말을 새 이야기로 본다
         assertEquals(DreamResponse.STEP_CONFIRM,
                 service.interpret(reply("", DREAM_FOUR, "엉뚱한값", null), GUEST, IP).step());
+    }
+
+    @Test
+    void 질문_중에_꿈과_무관한_말을_하면_AI_가_대화로_받고_같은_선택_버튼을_다시_보여_준다() {
+        when(session.call(any(AiRequest.class))).thenReturn(new AiResponse("괜찮아요, 기억나지 않아도 괜찮아요. 천천히 생각해 보세요.", "m", 1, 1));
+
+        DreamResponse r = service.interpret(
+                reply(DREAM_FOUR, "아 근데 기억이 잘 안 나요", DreamResponse.STEP_CONFIRM, List.of(3, 4, 8, 32), 1, "tok-3"), GUEST, IP);
+
+        assertEquals(DreamResponse.STEP_TALK, r.step());
+        assertEquals(DreamMessages.REPLIES_CONFIRM, r.quickReplies());
+        assertTrue(r.charged());
+        assertTrue(r.numbers().isEmpty());
+        verify(gateway, times(1)).open(AiFeature.DREAM, GUEST.value(), IP);   // 읽기와 대화를 합쳐 1회
     }
 
     @Test

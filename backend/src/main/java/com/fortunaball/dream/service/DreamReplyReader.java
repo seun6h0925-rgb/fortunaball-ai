@@ -48,7 +48,8 @@ public class DreamReplyReader {
 
     private static final List<String> CONFIRM_WORDS = List.of("확정", "그대로", "이대로", "이걸로", "그걸로", "오케이", "ok", "좋아", "좋습니다", "완료");
     private static final List<String> REGENERATE_WORDS = List.of("다시", "새로", "바꿔", "재생성", "다른걸", "다른번호");
-    private static final List<String> YES_WORDS = List.of("네", "예", "응", "그래", "좋아", "채워", "해줘", "해주세요", "오케이", "ok", "부탁", "괜찮", "만들어", "할게", "해볼게", "해볼래");
+    private static final List<String> YES_WORDS = List.of("네", "예", "응", "그래", "좋아", "채워", "해줘", "해주세요", "오케이", "ok", "부탁", "괜찮", "만들어", "할게", "해볼게", "해볼래",
+            "그렇게", "물론", "당연", "그럴게", "ㅇㅇ", "ㅇㅋ");
     private static final List<String> NO_WORDS = List.of("아니", "싫", "안할", "다른꿈", "그만", "됐어", "괜찮아요말고");
 
     private static final Pattern GAMES = Pattern.compile("(\\d+)\\s*(게임|장|판|세트)");
@@ -182,7 +183,7 @@ public class DreamReplyReader {
             """;
 
     /** 직전에 어떤 질문을 했는지 AI 에게 알려 주는 문장 */
-    private static String questionOf(String step) {
+    static String questionOf(String step) {
         return switch (step) {
             case DreamResponse.STEP_CONFIRM -> "이 번호로 확정할까요, 아니면 통계로 채운 번호만 다시 만들까요?";
             case DreamResponse.STEP_ASK_FILL -> "나머지 번호를 통계로 채워도 괜찮을까요?";

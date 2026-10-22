@@ -49,7 +49,8 @@ import org.springframework.stereotype.Service;
  *   이어서 : { dream, reply(사용자가 방금 한 말), step(직전 응답의 step), keep, gameCount, confirmToken }  ← 직전 응답 값을 그대로 돌려보낸다
  *
  * 처음 꿈을 들려줬을 때 (꿈에서 나온 번호 = 꿈 속 숫자 + 찾은 상징들의 번호, 개수 제한 없음)
- *   인사·감사·사용법·너무 짧은 꿈·정책에 걸린 말 → 고정 문구 (AI 없음, 횟수 차감 없음)
+ *   인사·감사·사용법·정책에 걸린 말(당첨 보장·구매 유도·절박한 요청) → 고정 문구 (AI 없음, 횟수 차감 없음)
+ *   짧은 말·꿈과 거리가 있는 말 → AI 가 대화로 받는다. (횟수 1회. 정말 무관하면 AI 가 판단해 고정 문구, 횟수 돌려줌)
  *   번호 0개   "통계 번호를 만들어 볼까요?"                         → step ASK_STAT_NUMBERS (고정 문구)
  *   번호 1~3개 "나머지를 통계로 채워도 될까요?"                     → step ASK_FILL
  *   번호 4~5개 모자란 1~2개를 통계로 바로 채우고 확정/다시 질문     → step CONFIRM
@@ -106,13 +107,14 @@ public class DreamService {
     private final DreamReplyReader reader;
     private final DreamNarrator narrator;
     private final DreamStatRanker ranker;
+    private final DreamChat chat;
 
     public DreamService(DreamKnowledgeRepository repository, DreamSymbolMatcher matcher,
                         DreamNumberExtractor numberExtractor, DreamNumberPicker numberPicker,
                         DreamInterpretationSelector selector, DreamPromptBuilder promptBuilder,
                         AiGateway gateway, GenerateService generateService, AiPolicyEngine policyEngine,
                         DreamMessages messages, DreamReplyReader reader, DreamNarrator narrator,
-                        DreamStatRanker ranker) {
+                        DreamStatRanker ranker, DreamChat chat) {
         this.repository = repository;
         this.matcher = matcher;
         this.numberExtractor = numberExtractor;
@@ -126,6 +128,7 @@ public class DreamService {
         this.reader = reader;
         this.narrator = narrator;
         this.ranker = ranker;
+        this.chat = chat;
     }
 
     // ------------------------------------------------------------------ 한 턴
@@ -135,6 +138,7 @@ public class DreamService {
         private final GuestToken guest;
         private final String clientIp;
         private AiSession session;
+        private boolean refunded;   // 돌려준 뒤에는 화면에 "횟수 사용"을 보여 주지 않는다
 
         Turn(GuestToken guest, String clientIp) {
             this.guest = guest;
@@ -149,12 +153,13 @@ public class DreamService {
         }
 
         boolean charged() {
-            return session != null;
+            return session != null && !refunded;
         }
 
         void refund() {
             if (session != null) {
                 session.refund();   // 이미 돌려줬다면 아무 일도 하지 않는다
+                refunded = true;
             }
         }
     }
@@ -183,7 +188,12 @@ public class DreamService {
             if (answered.isPresent()) {
                 return answered.get();
             }
-            // 질문에 대한 답이 아니었다 → 사용자의 말을 새 이야기로 보고 처음부터 처리한다
+            // 질문에 대한 답이 아니었다.
+            //  - 꿈 상징도 꿈 속 숫자도 없는 말(잡담·"기억 안 나요" 등) → AI 가 대화로 받는다. 질문 단계와 버튼은 그대로 유지한다.
+            //  - 그 밖의 말 → 사용자의 말을 새 이야기로 보고 처음부터 처리한다
+            if (isPlainTalk(reply)) {
+                return talk(reply, request.step(), turn);
+            }
         }
         return fresh(reply.isEmpty() ? dream : reply, turn);
     }
@@ -207,18 +217,26 @@ public class DreamService {
             r.suggestions = DreamMessages.SUGGESTIONS;
             return respond(r, turn);
         }
-        if (text.length() < MIN_LENGTH) {
-            gateway.recordBlocked(AiFeature.DREAM, DreamMessages.CODE_TOO_SHORT);
+        // 대화 우선: 짧은 말도 막지 않고 AI 가 대화로 받는다. (인사·감사·사용법은 위에서 고정 문구로 끝났다)
+        if (text.isEmpty()) {
+            gateway.recordBlocked(AiFeature.DREAM, DreamMessages.CODE_TOO_SHORT);   // 빈 입력은 AI 에게 보내지 않는다
             Reply r = Reply.fixed(DreamMatchResult.NO_MATCH, DreamResponse.STEP_NEED_MORE, messages.tooShort());
             r.policyCode = DreamMessages.CODE_TOO_SHORT;
             r.suggestions = DreamMessages.SUGGESTIONS;
             return respond(r, turn);
+        }
+        if (text.length() < MIN_LENGTH) {
+            return talk(text, null, turn);
         }
 
         Material m = material(text);
 
         // 정책에 걸리면(당첨 보장 요구, 구매 유도, 절박한 요청, 꿈이 아닌 입력) AI 없이 고정 문구로 응답한다. 번호도 만들지 않는다.
         PolicyHit hit = policyEngine.check(PolicyContext.dream(text, !m.symbols().isEmpty())).orElse(null);
+        // 꿈 표현이 없다는 키워드 판정(DREAM_OFF_TOPIC)은 바로 막지 않고 AI 가 대화로 받는다. 정말 무관한 말은 AI 가 판단해 고정 문구로 돌려보낸다.
+        if (hit != null && DreamMessages.CODE_OFF_TOPIC.equals(hit.policyCode())) {
+            return talk(text, null, turn);
+        }
         if (hit != null) {
             gateway.recordBlocked(AiFeature.DREAM, hit.policyCode());
             boolean offTopic = DreamMessages.CODE_OFF_TOPIC.equals(hit.policyCode());
@@ -292,6 +310,53 @@ public class DreamService {
                     : say(turn, Scene.REMOVED_FILLED, 0, line, messages.openRemoved(true) + " " + messages.askAfterFill());
         }
         return confirmReply(match, say, g);
+    }
+
+    // ------------------------------------------------------------------ 자유로운 대화
+
+    /** 꿈 상징도, 꿈 속 숫자도 없는 말인지. (인사·감사는 제외) 이런 말은 새 꿈 이야기가 아니라 대화로 받는다. */
+    private boolean isPlainTalk(String reply) {
+        if (messages.detectSmallTalk(reply).isPresent()) {
+            return false;
+        }
+        Material m = material(reply);
+        return m.symbols().isEmpty() && m.base().isEmpty();
+    }
+
+    /**
+     * AI 가 대화로 받는다. AI 가 쓴 글이므로 무료 횟수 1회를 쓴다.
+     * AI 가 "무관한 이야기"라고 판단했거나 글이 규칙(숫자·단정 표현·길이)을 어기면 횟수를 돌려주고 고정 문구로 안내한다.
+     *
+     * @param step 직전에 물어본 질문 단계 (없으면 null). 있으면 같은 선택 버튼을 다시 보여 준다. 화면은 이 응답으로 대화 상태를 바꾸지 않는다.
+     */
+    private DreamResponse talk(String text, String step, Turn turn) {
+        String said = chat.clean(turn.session().call(chat.request(text, step)).text());
+        if (said == null) {
+            turn.refund();
+            gateway.recordBlocked(AiFeature.DREAM, DreamMessages.CODE_OFF_TOPIC);
+            Reply r = Reply.fixed(DreamMatchResult.NO_MATCH, DreamResponse.STEP_TALK, messages.offTopic());
+            r.policyCode = DreamMessages.CODE_OFF_TOPIC;
+            r.quickReplies = quickRepliesOf(step);
+            r.suggestions = r.quickReplies.isEmpty() ? DreamMessages.SUGGESTIONS : List.of();
+            return respond(r, turn);
+        }
+        Reply r = Reply.fixed(DreamMatchResult.NO_MATCH, DreamResponse.STEP_TALK, said);
+        r.quickReplies = quickRepliesOf(step);
+        r.suggestions = r.quickReplies.isEmpty() ? DreamMessages.SUGGESTIONS : List.of();
+        return respond(r, turn);
+    }
+
+    private static List<String> quickRepliesOf(String step) {
+        if (step == null) {
+            return List.of();
+        }
+        return switch (step) {
+            case DreamResponse.STEP_CONFIRM -> DreamMessages.REPLIES_CONFIRM;
+            case DreamResponse.STEP_ASK_FILL -> DreamMessages.REPLIES_FILL;
+            case DreamResponse.STEP_ASK_STAT_NUMBERS -> DreamMessages.REPLIES_STAT;
+            case DreamResponse.STEP_ASK_OVERFLOW -> DreamMessages.REPLIES_OVERFLOW;
+            default -> List.of();
+        };
     }
 
     // ------------------------------------------------------------------ 이어지는 대화
