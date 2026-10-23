@@ -8,6 +8,7 @@ import com.fortunaball.ai.policy.PolicyContext;
 import com.fortunaball.ai.policy.PolicyHit;
 import com.fortunaball.ai.usage.AiFeature;
 import com.fortunaball.ai.usage.AiUsageSnapshot;
+import com.fortunaball.analyst.domain.ChatTurn;
 import com.fortunaball.analyst.service.AnalystSmallTalk;
 import com.fortunaball.common.exception.BusinessException;
 import com.fortunaball.common.exception.ErrorCode;
@@ -139,6 +140,10 @@ public class DreamService {
         private final String clientIp;
         private AiSession session;
         private boolean refunded;   // 돌려준 뒤에는 화면에 "횟수 사용"을 보여 주지 않는다
+        // 이어지는 대화: 지금 이야기 중인 꿈, 직전에 물은 질문 단계, 최근 대화 (화면이 요청마다 보내 준다. 저장하지 않는다)
+        private String ongoing = "";
+        private String ongoingStep;
+        private List<ChatTurn> history = List.of();
 
         Turn(GuestToken guest, String clientIp) {
             this.guest = guest;
@@ -183,6 +188,14 @@ public class DreamService {
         if (reply.length() > MAX_LENGTH) {
             throw invalidLength(reply);
         }
+        // 이야기 중인 꿈: 답으로 보낸 요청은 dream 자체가, 새 이야기처럼 보낸 요청은 ongoing 이 그 꿈이다.
+        String ongoing = reply.isEmpty() ? (request.ongoing() == null ? "" : request.ongoing().trim()) : dream;
+        if (ongoing.length() > MAX_LENGTH) {
+            ongoing = ongoing.substring(0, MAX_LENGTH);
+        }
+        turn.ongoing = ongoing;
+        turn.ongoingStep = request.step();
+        turn.history = cleanHistory(request.history());
         if (!reply.isEmpty() && isQuestionStep(request.step())) {
             Optional<DreamResponse> answered = followUp(request, dream, reply, turn);
             if (answered.isPresent()) {
@@ -191,9 +204,18 @@ public class DreamService {
             // 질문에 대한 답이 아니었다.
             //  - 꿈 상징도 꿈 속 숫자도 없는 말(잡담·"기억 안 나요" 등) → AI 가 대화로 받는다. 질문 단계와 버튼은 그대로 유지한다.
             //  - 그 밖의 말 → 사용자의 말을 새 이야기로 보고 처음부터 처리한다
-            if (isPlainTalk(reply)) {
+            if (isPlainTalk(reply) && !blockedByPolicy(reply)) {
                 return talk(reply, request.step(), turn);
             }
+        }
+        // 새 이야기처럼 보냈지만 이야기 중인 꿈이 있고 상징도 숫자도 없는 말("이 꿈에 맞는 번호가 있어?" 등)
+        // → 그 꿈에 대한 대화로 받는다. AI 가 정말 새 꿈 이야기라고 판단하면 아래에서 새 풀이로 처리한다.
+        if (reply.isEmpty() && !ongoing.isEmpty() && !dream.isEmpty() && isPlainTalk(dream) && !blockedByPolicy(dream)) {
+            Optional<DreamResponse> said = talkOrNew(dream, request.step(), turn, true);
+            if (said.isPresent()) {
+                return said.get();
+            }
+            turn.ongoing = "";   // 새 꿈 이야기로 처리한다. 이전 꿈은 더 이상 알려 주지 않는다.
         }
         return fresh(reply.isEmpty() ? dream : reply, turn);
     }
@@ -323,6 +345,12 @@ public class DreamService {
 
     // ------------------------------------------------------------------ 자유로운 대화
 
+    /** 당첨 보장 요구·구매 유도·절박한 요청처럼 AI 없이 고정 문구로 답해야 하는 말인지. (이런 말은 대화로 받지 않고 처음 풀이 쪽 정책 검사로 보낸다) */
+    private boolean blockedByPolicy(String text) {
+        PolicyHit hit = policyEngine.check(PolicyContext.dream(text, false)).orElse(null);
+        return hit != null && !DreamMessages.CODE_OFF_TOPIC.equals(hit.policyCode());
+    }
+
     /** 꿈 상징도, 꿈 속 숫자도 없는 말인지. (인사·감사는 제외) 이런 말은 새 꿈 이야기가 아니라 대화로 받는다. */
     private boolean isPlainTalk(String reply) {
         if (messages.detectSmallTalk(reply).isPresent()) {
@@ -339,20 +367,82 @@ public class DreamService {
      * @param step 직전에 물어본 질문 단계 (없으면 null). 있으면 같은 선택 버튼을 다시 보여 준다. 화면은 이 응답으로 대화 상태를 바꾸지 않는다.
      */
     private DreamResponse talk(String text, String step, Turn turn) {
-        String said = chat.clean(turn.session().call(chat.request(text, step)).text());
+        return talkOrNew(text, step, turn, false).orElseThrow();
+    }
+
+    /**
+     * 이야기 중인 꿈이 있으면 그 꿈과 최근 대화를 AI 에게 함께 알려 준다. (그래서 "그 꿈", "위에 꿈 얘기"가 통한다)
+     *
+     * @param newAllowed true 이고 AI 가 "새 꿈 이야기"라고 표시하면 비어 있는 Optional 을 돌려준다. (호출한 쪽이 새 풀이로 처리한다)
+     */
+    private Optional<DreamResponse> talkOrNew(String text, String step, Turn turn, boolean newAllowed) {
+        String asked = step != null ? step : turn.ongoingStep;   // 질문 단계가 있으면 같은 선택 버튼을 다시 보여 준다
+        String raw = turn.session().call(chat.request(text, asked, contextOf(turn.ongoing), turn.history)).text();
+        if (newAllowed && chat.isNewDream(raw)) {
+            return Optional.empty();
+        }
+        String said = chat.clean(raw);
         if (said == null) {
             turn.refund();
             gateway.recordBlocked(AiFeature.DREAM, DreamMessages.CODE_OFF_TOPIC);
             Reply r = Reply.fixed(DreamMatchResult.NO_MATCH, DreamResponse.STEP_TALK, messages.offTopic());
             r.policyCode = DreamMessages.CODE_OFF_TOPIC;
-            r.quickReplies = quickRepliesOf(step);
+            r.quickReplies = quickRepliesOf(asked);
             r.suggestions = r.quickReplies.isEmpty() ? DreamMessages.SUGGESTIONS : List.of();
-            return respond(r, turn);
+            return Optional.of(respond(r, turn));
         }
         Reply r = Reply.fixed(DreamMatchResult.NO_MATCH, DreamResponse.STEP_TALK, said);
-        r.quickReplies = quickRepliesOf(step);
+        r.quickReplies = quickRepliesOf(asked);
         r.suggestions = r.quickReplies.isEmpty() ? DreamMessages.SUGGESTIONS : List.of();
-        return respond(r, turn);
+        return Optional.of(respond(r, turn));
+    }
+
+    /**
+     * AI 에게 알려 줄 "이야기 중인 꿈" 글. 꿈 원문, 서비스가 찾은 상징과 해석 자료, 꿈에서 나온 번호가 있었는지를 담는다.
+     * 번호 숫자는 담지 않는다. (번호는 AI 가 말하지 않는다) 이야기 중인 꿈이 없으면 빈 글.
+     */
+    private String contextOf(String dream) {
+        if (dream == null || dream.length() < MIN_LENGTH) {
+            return "";
+        }
+        Material m = material(dream);
+        StringBuilder sb = new StringBuilder("[이야기 중인 꿈]\n").append(dream).append("\n\n[서비스가 찾은 자료]\n");
+        if (m.symbols().isEmpty()) {
+            sb.append("꿈 상징: 찾지 못했습니다.\n");
+        } else {
+            Map<Long, List<Interpretation>> chosen = chooseInterpretations(dream, m.symbols(),
+                    repository.loadInterpretations(m.symbols().stream().map(MatchedSymbol::id).toList()));
+            for (MatchedSymbol s : m.symbols()) {
+                sb.append("꿈 상징 ").append(s.keyword());
+                List<Interpretation> list = chosen.getOrDefault(s.id(), List.of());
+                if (!list.isEmpty()) {
+                    sb.append(": ").append(list.get(0).summary());
+                }
+                sb.append('\n');
+            }
+        }
+        sb.append(m.base().isEmpty()
+                ? "꿈에서 나온 번호: 없음 (상징에 연결된 번호도, 꿈에 적은 숫자도 없어서 번호는 통계로 만듭니다)\n"
+                : "꿈에서 나온 번호: 있음 (" + m.base().size() + "개, 번호 숫자는 말하지 마세요)\n");
+        return sb.toString();
+    }
+
+    /** 화면이 보낸 최근 대화를 정리한다. 형식이 이상한 줄은 건너뛰고, 최근 6개까지, 한 줄 300자까지만 쓴다. */
+    static List<ChatTurn> cleanHistory(List<ChatTurn> raw) {
+        if (raw == null || raw.isEmpty()) {
+            return List.of();
+        }
+        List<ChatTurn> cleaned = new ArrayList<>();
+        for (ChatTurn t : raw) {
+            if (t == null || t.content() == null || t.content().isBlank()
+                    || (!ChatTurn.USER.equals(t.role()) && !ChatTurn.ASSISTANT.equals(t.role()))) {
+                continue;
+            }
+            String content = t.content().trim();
+            cleaned.add(new ChatTurn(t.role(), content.length() > MAX_LENGTH ? content.substring(0, MAX_LENGTH) : content));
+        }
+        int from = Math.max(0, cleaned.size() - 6);
+        return List.copyOf(cleaned.subList(from, cleaned.size()));
     }
 
     private static List<String> quickRepliesOf(String step) {

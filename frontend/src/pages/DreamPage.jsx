@@ -26,6 +26,9 @@ import MakeTabs from '../features/generate/MakeTabs.jsx'
 import useApi from '../hooks/useApi.js'
 import usePageTitle from '../hooks/usePageTitle.js'
 
+// 서버에 다시 보내는 최근 대화 개수 (서버도 6개까지만 쓴다)
+const TALK_LIMIT = 6
+
 const GREETING = {
   id: 0,
   kind: 'ai',
@@ -59,6 +62,8 @@ export default function DreamPage() {
   const idRef = useRef(1)
   // 서버와 이어 가기 위한 값: { dream, step, keep, gameCount, confirmToken }. 새 꿈을 풀면 바뀐다.
   const ctxRef = useRef(null)
+  // 꿈에 대해 주고받은 최근 대화 [{ role, content }]. 서버가 기억하지 않으므로 요청마다 다시 보낸다. 새 꿈을 풀면 비운다.
+  const talkRef = useRef([])
   const inputRef = useRef(null)
 
   const push = (m) => {
@@ -102,13 +107,24 @@ export default function DreamPage() {
     push({ kind: 'user', text: shown || text })
     setInput('')
     setBusy(true)
+    const history = talkRef.current.slice(-TALK_LIMIT)
+    // 새 이야기처럼 보내는 말에도 지금 이야기 중인 꿈(ongoing)을 같이 보낸다. 그래야 "그 꿈에 맞는 번호가 있어?" 같은 질문에 이어서 답한다.
     const body = isReply
-      ? { dream: ctx.dream, reply: text, step: ctx.step, keep: ctx.keep, gameCount: ctx.gameCount, confirmToken: ctx.confirmToken }
-      : { dream: text }
+      ? { dream: ctx.dream, reply: text, step: ctx.step, keep: ctx.keep, gameCount: ctx.gameCount, confirmToken: ctx.confirmToken, history }
+      : ctx
+        ? { dream: text, ongoing: ctx.dream, step: ctx.step, history }
+        : { dream: text }
     try {
       const r = await askDream(body)
-      // 인사·너무 짧음 같은 말만 돌려주는 응답은, 진행 중이던 대화(확정 대기 등)를 끊지 않는다
-      if (r.step !== 'TALK' && r.step !== 'NEED_MORE') {
+      // 인사·너무 짧음 같은 말만 돌려주는 응답은, 진행 중이던 대화(확정 대기 등)를 끊지 않는다. 대화 기록에는 남겨서 다음 말에 이어지게 한다.
+      if (r.step === 'TALK' || r.step === 'NEED_MORE') {
+        talkRef.current = [
+          ...talkRef.current,
+          { role: 'user', content: text },
+          { role: 'assistant', content: r.message || '' },
+        ].slice(-TALK_LIMIT)
+      } else {
+        if (!isReply) talkRef.current = [] // 새 꿈을 풀기 시작하면 이전 대화는 비운다
         ctxRef.current = {
           dream: isReply ? ctx.dream : text,
           step: r.step,
@@ -166,6 +182,7 @@ export default function DreamPage() {
       const issued = await confirmIssue(token)
       saveIssued(issued)
       ctxRef.current = null
+      talkRef.current = []
       push({
         kind: 'ai',
         text: `발급을 확정했어요. 발급 코드는 ${issued.issueCode} 예요. 번호는 내 발급 내역에서도 볼 수 있어요.`,

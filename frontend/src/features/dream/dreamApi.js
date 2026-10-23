@@ -11,6 +11,7 @@ export const NEW_STORY_LENGTH = 20
  * API-08 꿈풀이 (대화로 이어진다)
  * 처음: { dream }
  * 이어서 답할 때: { dream(처음 꿈 그대로), reply, step, keep, gameCount, confirmToken }  ← step·keep·gameCount·confirmToken 은 직전 응답 값을 그대로 돌려보낸다
+ * 꿈과 상관없는 질문처럼 새 이야기로 보내는 말에는 { dream(방금 한 말), ongoing(이야기 중인 꿈), step, history }. 모든 요청에 history(최근 대화 6개 이하 [{ role, content }])를 같이 보낸다.
  * 받는 값: { matchResult, step, policyCode, message, question, symbols[{keyword, interpretations[{situation, summary, polarity, region}]}],
  *           interpretation, numbers[{number, origin}], games[[{number, origin}]], keep, gameCount, confirmToken, tokenTtlMinutes,
  *           targetRound, action('ISSUE'|'OPEN_GUIDE'), quickReplies[], suggestions[], charged, basisNotice, notice, remainingToday }

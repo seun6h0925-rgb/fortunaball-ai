@@ -2,6 +2,8 @@ package com.fortunaball.dream.service;
 
 import com.fortunaball.ai.client.AiRequest;
 import com.fortunaball.ai.client.AiRole;
+import com.fortunaball.analyst.domain.ChatTurn;
+import java.util.List;
 import org.springframework.stereotype.Component;
 
 /**
@@ -21,6 +23,8 @@ public class DreamChat {
 
     /** AI 가 "도와드릴 수 없는 이야기"라고 판단했을 때 쓰는 표시 */
     static final String OFF_MARK = "[OFF_TOPIC]";
+    /** 이야기 중인 꿈이 있는데 사용자가 "새 꿈 이야기"를 시작했다고 AI 가 판단했을 때 쓰는 표시 */
+    static final String NEW_MARK = "[NEW_DREAM]";
     static final int MAX_CHARS = 300;
 
     private static final String SYSTEM = """
@@ -32,13 +36,42 @@ public class DreamChat {
             4. 로또 번호나 숫자를 직접 말하지 마세요. 번호는 서비스가 정해진 자료로 따로 만듭니다.
             5. 당첨을 보장하거나 확률이 오른다고 말하지 마세요. 구매를 권하지도 마세요.
             6. 꿈풀이·로또와 전혀 관계없는 이야기이거나 정치·성적·불법 등 부적절한 이야기면 다른 글 없이 [OFF_TOPIC] 만 쓰세요.
+            7. [이야기 중인 꿈]이 주어지면 그 꿈과 [이전 대화]를 이어서 답하세요. 사용자가 "그 꿈", "위에 꿈", "방금 번호"라고 하면 이 꿈을 가리킵니다.
+               꿈에 대한 질문은 [서비스가 찾은 자료] 안에서만 답하고, 자료에 없는 내용을 지어내지 마세요. 처음 들은 척하거나 꿈을 다시 물어보지 마세요.
+               번호가 맞는지 물으면 숫자 없이 "꿈 상징에서 나온 번호가 있다/없어서 통계로 만들었다" 정도로 설명하세요.
+            8. [이야기 중인 꿈]이 있는데 사용자가 완전히 새로운 꿈 이야기를 들려주는 것이면 다른 글 없이 [NEW_DREAM] 만 쓰세요.
             """;
+
+    /**
+     * @param step    직전에 서비스가 물어본 질문 단계 (없으면 null)
+     * @param context 이야기 중인 꿈과 서비스가 찾은 자료를 글로 만든 것 (없으면 빈 글). DreamService 가 만든다.
+     * @param history 꿈에 대해 주고받은 최근 대화 (없으면 빈 목록)
+     */
+    public AiRequest request(String text, String step, String context, List<ChatTurn> history) {
+        String question = step == null ? "(없음)" : DreamReplyReader.questionOf(step);
+        StringBuilder input = new StringBuilder();
+        if (context != null && !context.isBlank()) {
+            input.append(context).append('\n');
+        }
+        if (history != null && !history.isEmpty()) {
+            input.append("[이전 대화]\n");
+            for (ChatTurn turn : history) {
+                input.append(turn.isUser() ? "사용자: " : "도우미: ").append(turn.content()).append('\n');
+            }
+            input.append('\n');
+        }
+        input.append("서비스가 직전에 물은 질문: ").append(question).append("\n사용자의 말: ").append(text);
+        return new AiRequest(AiRole.ANSWER, SYSTEM, input.toString(), 800);   // 생각에 쓰는 토큰까지 감안해 넉넉히 둔다
+    }
 
     /** @param step 직전에 서비스가 물어본 질문 단계 (없으면 null) */
     public AiRequest request(String text, String step) {
-        String question = step == null ? "(없음)" : DreamReplyReader.questionOf(step);
-        String input = "서비스가 직전에 물은 질문: " + question + "\n사용자의 말: " + text;
-        return new AiRequest(AiRole.ANSWER, SYSTEM, input, 800);   // 생각에 쓰는 토큰까지 감안해 넉넉히 둔다
+        return request(text, step, "", List.of());
+    }
+
+    /** AI 가 "새 꿈 이야기"라고 표시했는지 */
+    public boolean isNewDream(String aiText) {
+        return aiText != null && aiText.contains(NEW_MARK);
     }
 
     /** 꿈 표현은 있지만 상징·번호가 없을 때: 이 답 바로 아래에 "통계 번호를 만들어 볼까요?" 버튼이 붙는다. */
@@ -51,7 +84,7 @@ public class DreamChat {
     /** 쓸 수 있는 글이면 다듬어 돌려주고, 아니면 null (호출한 쪽이 고정 문구로 대신한다) */
     public String clean(String aiText) {
         String text = aiText == null ? "" : aiText.trim();
-        if (text.isEmpty() || text.contains(OFF_MARK) || text.length() > MAX_CHARS) {
+        if (text.isEmpty() || text.contains(OFF_MARK) || text.contains(NEW_MARK) || text.length() > MAX_CHARS) {
             return null;
         }
         if (text.chars().anyMatch(Character::isDigit) || DreamService.FORBIDDEN.matcher(text).find()) {

@@ -716,4 +716,52 @@ class DreamServiceTest {
         assertThrows(BusinessException.class, () -> service.interpret(
                 reply("", "네, 채워 주세요", DreamResponse.STEP_ASK_FILL, null), GUEST, IP));
     }
+
+    // ------------------------------------------------------------------ 이어지는 대화 (이야기 중인 꿈을 기억한 채 답한다)
+
+    /** 새 이야기처럼 보내는 요청: dream 은 방금 한 말, ongoing 은 이야기 중인 꿈 */
+    private static DreamRequest ask(String text, String ongoing, String step) {
+        return new DreamRequest(text, null, step, List.of(), null, "tok-1", ongoing, null);
+    }
+
+    @Test
+    void 꿈에_대한_후속_질문은_이야기_중인_꿈과_함께_AI_에게_보내고_질문_버튼을_유지한다() {
+        when(session.call(any(AiRequest.class))).thenReturn(new AiResponse("돼지 꿈에는 전통 해석이 있고, 번호는 상징에서 나왔어요.", "m", 10, 10));
+
+        DreamResponse r = service.interpret(
+                ask("해당 꿈에 대한 상징성이나 번호가 매칭이 되는게 있어?", DREAM_FOUR, DreamResponse.STEP_CONFIRM), GUEST, IP);
+
+        assertEquals(DreamResponse.STEP_TALK, r.step());
+        assertEquals("돼지 꿈에는 전통 해석이 있고, 번호는 상징에서 나왔어요.", r.message());
+        assertEquals(DreamMessages.REPLIES_CONFIRM, r.quickReplies());
+        assertTrue(r.charged());
+        ArgumentCaptor<AiRequest> sent = ArgumentCaptor.forClass(AiRequest.class);
+        verify(session).call(sent.capture());
+        assertTrue(sent.getValue().userPrompt().contains("[이야기 중인 꿈]"));
+        assertTrue(sent.getValue().userPrompt().contains(DREAM_FOUR));
+        assertTrue(sent.getValue().userPrompt().contains("꿈 상징 돼지"));
+    }
+
+    @Test
+    void AI_가_새_꿈_이야기라고_표시하면_이전_꿈이_아니라_새_풀이로_처리하고_횟수는_1회만_쓴다() {
+        String newDream = "연예인이 먼저 인사하고 친구들이 부러워하는 꿈을 꿨어";
+        when(session.call(any(AiRequest.class)))
+                .thenReturn(new AiResponse("[NEW_DREAM]", "m", 1, 1))
+                .thenReturn(new AiResponse("연예인이 반겨 준 꿈이군요. 통계로 번호를 만들어 볼 수 있어요.", "m", 1, 1));
+
+        DreamResponse r = service.interpret(ask(newDream, DREAM_FOUR, DreamResponse.STEP_CONFIRM), GUEST, IP);
+
+        assertEquals(DreamResponse.STEP_ASK_STAT_NUMBERS, r.step());
+        assertTrue(r.charged());
+        verify(gateway, times(1)).open(AiFeature.DREAM, GUEST.value(), IP);
+    }
+
+    @Test
+    void 이야기_중인_꿈이_있어도_당첨_보장_요구는_대화로_받지_않고_고정_문구로_답한다() {
+        DreamResponse r = service.interpret(ask("당첨번호알려줘", DREAM_FOUR, DreamResponse.STEP_CONFIRM), GUEST, IP);
+
+        assertEquals("GUARANTEE_REQUEST", r.policyCode());
+        assertFalse(r.charged());
+        verify(session, never()).call(any(AiRequest.class));
+    }
 }
