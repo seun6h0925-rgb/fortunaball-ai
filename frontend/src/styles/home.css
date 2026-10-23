@@ -179,6 +179,10 @@
   margin-top: 12px;
 }
 .home-hero__sub .btn { min-height: 48px; padding: 0 10px; font-size: 14px; }
+/* 아이콘과 글자를 한 덩어리로 정중앙에 맞춘다 */
+.home-hero__sub .btn { gap: 6px; line-height: 1; text-align: center; }
+.home-hero__sub .btn svg { flex: none; display: block; }
+.home-hero__sub .btn span { display: block; padding-top: 1px; }
 @media (min-width: 1024px) {
   .home-hero__round { font-size: 32px; }
   .home-hero__date { font-size: 14px; }

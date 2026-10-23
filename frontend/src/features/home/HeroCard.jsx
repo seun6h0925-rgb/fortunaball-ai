@@ -69,11 +69,11 @@ export default function HeroCard({ latest, current, trend }) {
       <div className="home-hero__sub">
         <Link to="/analyst" className="btn btn--ghost">
           <Icon name="bars" size={18} />
-          AI 애널리스트
+          <span>AI 애널리스트</span>
         </Link>
         <Link to="/dream" className="btn btn--ghost">
           <Icon name="moon" size={18} />
-          꿈풀이 번호
+          <span>AI 꿈풀이</span>
         </Link>
       </div>
     </section>
