@@ -55,11 +55,11 @@
 }
 .logo__img {
   display: block;
-  height: 52px; /* PC 상단바 */
+  height: 31.5px; /* PC 상단바 */
   width: auto;
 }
 .mhead .logo__img {
-  height: 44px; /* 모바일 헤더 */
+  height: 26.5px; /* 모바일 헤더 */
 }
 
 /* ── 모바일 하단 둥근 바 ── */
