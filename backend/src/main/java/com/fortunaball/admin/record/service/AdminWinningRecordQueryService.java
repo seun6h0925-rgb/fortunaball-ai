@@ -47,11 +47,12 @@ public class AdminWinningRecordQueryService {
         }
         return AdminJdbc.page(jdbc,
                 "v.id, v.round_no, v.winning_rank, v.match_count, v.bonus_matched, v.is_public, v.verified_at,"
-                        + " n.issue_code, i.number_1, i.number_2, i.number_3, i.number_4, i.number_5, i.number_6",
+                        + " n.issue_code, n.guest_token, n.created_at AS issued_at, i.number_1, i.number_2, i.number_3, i.number_4, i.number_5, i.number_6",
                 where.toString(), args, "v.verified_at DESC, v.id DESC", AdminQuery.page(page), AdminQuery.size(size),
                 (rs, idx) -> new AdminWinningRecordItem(rs.getLong("id"), rs.getInt("round_no"),
                         rs.getInt("winning_rank"), rs.getInt("match_count"), rs.getBoolean("bonus_matched"),
                         rs.getBoolean("is_public"), rs.getString("issue_code"),
+                        rs.getString("guest_token"), AdminJdbc.time(rs, "issued_at"),
                         List.of(rs.getInt("number_1"), rs.getInt("number_2"), rs.getInt("number_3"),
                                 rs.getInt("number_4"), rs.getInt("number_5"), rs.getInt("number_6")),
                         AdminJdbc.time(rs, "verified_at")));

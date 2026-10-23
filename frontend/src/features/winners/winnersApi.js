@@ -5,8 +5,8 @@ import { api } from '../../api/http.js'
 /**
  * API-17 우리 서비스 당첨 기록 (공개된 기록만). 최신 회차 → 높은 등수 순.
  * rank 를 비우면 전체. size 는 최대 50.
- * 받는 값: { items[{recordId, roundNo, rank, matchCount, bonusMatched, comment, verifiedAt}], page, size, totalElements, totalPages }
- * ※ 공개용이라 발급 번호·발급코드·사진은 내려오지 않는다.
+ * 받는 값: { items[{recordId, roundNo, rank, matchCount, bonusMatched, issueCode, guestMasked, issuedAt, comment, verifiedAt}], page, size, totalElements, totalPages }
+ * ※ 발급코드·발급 시각(초 단위)·게스트(앞 4자리만 가림)는 그대로 공개한다. 발급 번호·사진은 내려오지 않는다.
  */
 export const fetchRecords = (signal, { rank, page = 0, size = 10 } = {}) =>
   api.get('/api/winning-records', { signal, query: { rank, page, size } })

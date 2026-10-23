@@ -2,7 +2,7 @@ import { useState } from 'react'
 import IssueCard from '../issues/IssueCard.jsx'
 import { fetchIssueDetail } from '../issues/issuesApi.js'
 import { CODE_LENGTH, normalizeCode } from '../../lib/issueCode.js'
-import { formatDateTime } from '../../lib/format.js'
+import { formatDateTimeSec } from '../../lib/format.js'
 import { matchText } from './winnersApi.js'
 
 // 우리 서비스 당첨 기록(UI-09)의 카드들.
@@ -79,7 +79,7 @@ export function CodeLookup() {
   )
 }
 
-/** 공개된 당첨 기록 한 건. (공개용이라 번호·발급코드는 없다. 회차·등수·일치 개수·한마디만) */
+/** 공개된 당첨 기록 한 건. 회차·등수·일치 개수와 함께, 누가·언제 받은 어떤 코드인지(발급코드·게스트·발급 시각)를 그대로 보여 준다. */
 export function RecordRow({ item }) {
   return (
     <li className="win__rec">
@@ -88,7 +88,12 @@ export function RecordRow({ item }) {
         <span className={`win__rank win__rank--${item.rank}`}>{item.rank}등</span>
         <span className="win__rec-match">{matchText(item)}</span>
       </div>
-      <span className="win__rec-date">{formatDateTime(item.verifiedAt)} 확인</span>
+      <p className="win__rec-meta">
+        <span>발급코드 <b className="win__rec-code">{item.issueCode}</b></span>
+        <span>{item.guestMasked}</span>
+        <span>{formatDateTimeSec(item.issuedAt)} 발급</span>
+      </p>
+      <span className="win__rec-date">{formatDateTimeSec(item.verifiedAt)} 확인</span>
       {item.comment && <p className="win__rec-comment">“{item.comment}”</p>}
     </li>
   )

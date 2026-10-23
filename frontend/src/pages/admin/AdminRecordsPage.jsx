@@ -10,7 +10,7 @@ import { RECORD_PAGE_SIZE, fetchRecords, fetchWinningNumbers, setRecordPublic } 
 const pad = (n) => String(n).padStart(2, '0')
 const dt = (s) => {
   const d = new Date(s)
-  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+  return `${d.getFullYear()}.${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`
 }
 const EMPTY = { roundNo: '', rank: '', publicVisible: '' }
 
@@ -90,7 +90,7 @@ export default function AdminRecordsPage() {
               <EmptyState title="당첨 기록이 없어요">조건을 바꿔서 다시 조회해 보세요.</EmptyState>
             ) : (
               <table className="adtable adtable--click">
-                <thead><tr><th>ID</th><th>회차</th><th>등수</th><th>발급코드</th><th>검증 시각</th><th>공개</th></tr></thead>
+                <thead><tr><th>ID</th><th>회차</th><th>등수</th><th>발급코드</th><th>게스트</th><th>발급 시각</th><th>검증 시각</th><th>공개</th></tr></thead>
                 <tbody>
                   {items.map((r) => (
                     <tr key={r.recordId} className={r.recordId === picked?.recordId ? 'is-sel' : ''} onClick={() => setPickId(r.recordId)}>
@@ -98,6 +98,8 @@ export default function AdminRecordsPage() {
                       <td>{r.roundNo}</td>
                       <td><span className="adpill">{r.winningRank}등</span></td>
                       <td><b>{r.issueCode}</b></td>
+                      <td title={r.guestToken}>{r.guestToken?.slice(0, 8)}…</td>
+                      <td>{dt(r.issuedAt)}</td>
                       <td>{dt(r.verifiedAt)}</td>
                       <td>
                         <button type="button" role="switch" aria-checked={isPublic(r)} aria-label={`${r.recordId}번 기록 공개`} className={`adswitch${isPublic(r) ? ' is-on' : ''}`} onClick={(e) => { e.stopPropagation(); toggle(r) }} disabled={busy}><i /></button>
@@ -116,6 +118,8 @@ export default function AdminRecordsPage() {
               <>
                 <p className="addetail__meta">기록 ID {picked.recordId} · {picked.roundNo}회 · {picked.winningRank}등</p>
                 <p className="addetail__meta">발급코드 {picked.issueCode}</p>
+                <p className="addetail__meta">게스트 {picked.guestToken}</p>
+                <p className="addetail__meta">발급 {dt(picked.issuedAt)}</p>
                 <p className="addetail__meta">검증 {dt(picked.verifiedAt)}</p>
                 <div className="addetail__game">
                   {picked.numbers.map((n) => <LottoBall key={n} n={n} size={30} off={!!win.data && !win.data.includes(n)} />)}

@@ -83,7 +83,7 @@ export default function WinnersPage() {
             {first && first.totalPages > 1 && (
               <Pagination page={page} totalPages={first.totalPages} onChange={setPage} disabled={list.loading} />
             )}
-            <p className="win__note">공개 기록에는 회차·등수·일치 개수만 보이고, 발급 번호와 개인정보는 없어요.</p>
+            <p className="win__note">발급코드와 발급 시각은 그대로 공개해요. 게스트는 앞 4자리만 보이고, 번호는 발급코드로 조회할 수 있어요.</p>
           </section>
         </div>
 

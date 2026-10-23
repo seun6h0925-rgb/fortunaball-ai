@@ -112,6 +112,21 @@
   font-size: 15px;
   color: var(--on-navy);
 }
+.win__rec-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  font-size: 13px;
+  color: var(--on-navy);
+  word-break: keep-all;
+}
+.win__rec-meta span {
+  white-space: nowrap;
+}
+.win__rec-code {
+  letter-spacing: 0.5px;
+  color: var(--gold);
+}
 .win__rec-date {
   font-size: 13px;
   color: var(--on-navy-soft);

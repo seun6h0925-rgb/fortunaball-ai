@@ -35,3 +35,10 @@ export function formatDateTime(text) {
   const hhmm = timePart.slice(0, 5)
   return `${y}.${String(m).padStart(2, '0')}.${String(d).padStart(2, '0')} (${day}) ${hhmm}`
 }
+
+/** "2026-10-15T13:42:10" → "2026.10.15 (목) 13:42:10". 발급 기록처럼 초까지 그대로 보여 줄 때 쓴다 */
+export function formatDateTimeSec(text) {
+  if (!text) return ''
+  const timePart = text.split('T')[1] || ''
+  return `${formatDateTime(text)}${timePart.length >= 8 ? timePart.slice(5, 8) : ':00'}`
+}
