@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom'
 import PageHeader, { ShareLikeBar } from '../components/layout/PageHeader.jsx'
 import AdSlot from '../components/ui/AdSlot.jsx'
+import SideStack from '../components/ui/SideStack.jsx'
 import NoticeBox from '../components/ui/NoticeBox.jsx'
 import RoundNav from '../components/ui/RoundNav.jsx'
 import { ErrorState } from '../components/ui/StateView.jsx'
@@ -49,15 +50,21 @@ export default function PayoutPage() {
         <div className="card"><ErrorState error={latestQ.error} onRetry={latestQ.reload} /></div>
       ) : (
         <div className="pay__grid">
-          <section className="card card--hero pay__pick" aria-label="당첨금 선택">
-            <h2 className="pay__h">당첨금 선택</h2>
-            <span className="pay__label">회차</span>
-            <RoundNav value={round} latest={latestNo} onChange={(r) => change(r, rank)} />
-            <span className="pay__label">등수</span>
-            <RankPicker rank={rank} onPick={(r) => change(round, r)} />
-          </section>
-          <ResultCard q={q} round={round} rank={rank} />
-          <BasisCard data={q.data} />
+          {/* 모바일에서는 래퍼를 풀고 CSS order 로 선택 → 결과 → 기준 순서를 지킨다. PC 는 왼쪽(선택·기준) / 오른쪽(결과·후원) 두 열 */}
+          <div className="pay__left">
+            <section className="card card--hero pay__pick" aria-label="당첨금 선택">
+              <h2 className="pay__h">당첨금 선택</h2>
+              <span className="pay__label">회차</span>
+              <RoundNav value={round} latest={latestNo} onChange={(r) => change(r, rank)} />
+              <span className="pay__label">등수</span>
+              <RankPicker rank={rank} onPick={(r) => change(round, r)} />
+            </section>
+            <BasisCard data={q.data} />
+          </div>
+          <div className="pay__right">
+            <ResultCard q={q} round={round} rank={rank} />
+            <SideStack />
+          </div>
         </div>
       )}
 

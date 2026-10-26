@@ -33,6 +33,10 @@
 .pay__basis p { margin: 0; }
 .pay__basis-title { color: var(--on-navy); font-size: 15px; }
 .pay__basis-note { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; font-size: 13px; line-height: 1.6; color: var(--on-navy-mute); }
+/* 오른쪽 열: 결과 카드 + (PC 에서만) 다음으로 가기 카드. 모바일에서는 래퍼를 풀어서 기존 순서 그대로 */
+.pay__left, .pay__right { display: contents; }
+.pay__pick { order: 1; } .pay__result { order: 2; } .pay__basis { order: 3; }
+.sidec { display: none; }
 .pay__link { color: var(--accent-solid); text-decoration: underline; }
 
 /* ── UI-13 당첨금 수령 가이드 ── */
@@ -58,9 +62,9 @@
 .gd__item--check svg { color: var(--accent-solid); flex: none; }
 
 /* ── UI-14 서비스 안내 · 유의사항 ── */
+/* 모바일: 한 줄로 쌓는다. 순서는 카드마다 --o(모바일) / --po(PC) 로 정한다 (AboutPage.jsx 의 o, po) */
 .ab__cols { display: flex; flex-direction: column; gap: 16px; }
-.ab__col { display: contents; } /* 모바일: 열을 풀어서 order 대로 한 줄로 쌓는다 */
-.ab__card { padding: 0; overflow: hidden; }
+.ab__card { order: var(--o); padding: 0; overflow: hidden; }
 .ab__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 18px 20px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
 .ab__title { margin: 0; font-size: 17px; font-weight: 700; }
 .ab__title--fixed { padding: 18px 20px 0; }
@@ -71,6 +75,14 @@
 .ab__title--fixed + .ab__body { padding-top: 10px; }
 .ab__btn { align-self: flex-start; }
 .ab__body .btn--block { align-self: stretch; text-align: center; text-decoration: none; }
+/* 후원하기 줄: 접힌 카드(제목 한 줄 + 위아래 여백)와 같은 높이 */
+.ab__support { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 62px; padding: 8px 20px; }
+.ab__support-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ab__support-text p { margin: 0; font-size: 13px; color: var(--on-navy-mute); }
+.ab__support-btn { flex: none; min-height: 40px; padding: 0 20px; }
+/* 도박 과몰입 주의: 모바일은 위아래로 이어서 */
+.ab__body--split { gap: 8px; }
+.ab__split-l, .ab__split-r { display: flex; flex-direction: column; gap: 8px; }
 
 /* ── UI-15 공지사항 ── */
 .nt__list { padding: 6px 20px; }
@@ -96,17 +108,43 @@
   .gd__steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
+/* 서비스 안내: 폭 720px 이상(큰 태블릿·폴드 펼침·PC)부터 두 칸씩 짝을 지어, 접힌 카드끼리 높이가 딱 맞게 놓는다 */
+@media (min-width: 720px) {
+  .ab__cols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px; align-items: start; }
+  .ab__card--wide { grid-column: 1 / -1; }
+  .ab__card--wide .ab__body { max-width: 900px; }
+  .ab__body--split { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+  /* 오른쪽 상담 칸은 살짝 어두운 바탕으로 구분 */
+  .ab__split-r { padding: 16px 18px; border: 1px solid var(--line-card); border-radius: 16px; background: rgba(255, 255, 255, 0.06); }
+}
+
 @media (min-width: 1024px) {
-  .pay__grid { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr); grid-template-areas: "pick result" "basis result"; }
-  .pay__pick { grid-area: pick; } .pay__result { grid-area: result; } .pay__basis { grid-area: basis; }
+  /* PC: 왼쪽(선택 · 계산 기준) / 오른쪽(결과 · 후원) 두 열. 두 열의 아래 끝이 같아지도록 맨 아래 카드(계산 기준 · 후원 줄)의 높이를 늘린다 */
+  .pay__grid { grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr); align-items: stretch; }
+  .pay__left, .pay__right { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .pay__pick, .pay__result, .pay__basis { order: 0; } /* 모바일용 order 해제: PC 는 DOM 순서(위: 선택·결과, 아래: 계산 기준·후원) 그대로 */
+  .pay__basis { flex: 1; }
+  /* PC: 빈칸을 채우는 후원 줄 (회차별 당첨번호·당첨금 화면 공통). 열의 남는 높이를 채워서 아래 끝을 맞춘다 */
+  .sidec { display: flex; flex-direction: column; flex: 1; }
+  .sidec__support { flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 62px; padding: 10px 22px; }
+  .sidec__support-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .sidec__support-text b { font-size: 15px; }
+  .sidec__support-text small { font-size: 13px; color: var(--on-navy-mute); }
+  .sidec__support-btn { flex: none; min-height: 40px; padding: 0 20px; }
   .pay__prize { font-size: 52px; }
 
   .gd__grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; align-items: stretch; }
   .gd__auto { order: 0; grid-column: 1 / -1; }
   .gd__places { order: 1; } .gd__prep { order: 2; } .gd__warn { order: 3; }
 
-  .ab__cols { flex-direction: row; align-items: flex-start; gap: 24px; }
-  .ab__col { display: flex; flex-direction: column; gap: 16px; flex: 1; min-width: 0; }
+  /* PC 는 --po 순서(짝이 맞도록 정한 순서)로 놓는다 */
+  .ab__cols { gap: 20px 24px; }
+  .ab__card { order: var(--po); }
+  .ab__title { font-size: 18px; }
+  .ab__head { padding: 18px 24px; }
+  .ab__body { padding: 0 24px 22px; font-size: 15px; }
+  .ab__title--fixed { padding: 20px 24px 0; }
+  .ab__support { padding: 8px 24px; }
 
   .nt__detail { grid-template-columns: minmax(0, 1fr) 300px; gap: 24px; }
   .nt__article { padding: 38px 40px; }

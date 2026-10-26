@@ -1,6 +1,7 @@
 import { useSearchParams } from 'react-router-dom'
 import PageHeader, { ShareLikeBar } from '../components/layout/PageHeader.jsx'
 import AdSlot from '../components/ui/AdSlot.jsx'
+import SideStack from '../components/ui/SideStack.jsx'
 import NoticeBox from '../components/ui/NoticeBox.jsx'
 import { ErrorState } from '../components/ui/StateView.jsx'
 import { PrizeTable, RoundCard } from '../features/draws/DrawsPanels.jsx'
@@ -59,6 +60,7 @@ export default function DrawsPage() {
           <div className="draws__left">
             <RoundCard draw={draw} latest={latestNo} onPick={pick} />
             <TicketCard />
+            <SideStack />
           </div>
           {draw ? <PrizeTable key={draw.roundNo} draw={draw} /> : <div className="card card--hero draws__prizes"><div className="skeleton" style={{ height: 260 }} /></div>}
         </div>
