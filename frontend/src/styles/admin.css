@@ -186,3 +186,13 @@
 .addown { color: var(--down); }
 .adpop { display: grid; grid-template-columns: 20px 110px minmax(0, 1fr) 56px; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 14px; }
 .adpop em { font-style: normal; text-align: right; }
+
+/* AI 입력 정책(AD-14) */
+.adstat__value--s { font-size: 20px; }
+.adfilter__right { margin-left: auto; }
+.adfilter--tabs { justify-content: space-between; }
+.adkw { display: inline-flex; border: 1px solid var(--line-chip); border-radius: 999px; overflow: hidden; font-size: 12.5px; }
+.adkw button { padding: 4px 10px; border: 0; background: transparent; color: var(--on-navy); }
+.adkw button + button { padding: 4px 8px; border-left: 1px solid var(--line-soft); color: var(--on-navy-mute); }
+.adkw.is-off { opacity: 0.55; }
+.adform__add--kw { grid-template-columns: 1fr 96px auto; }
