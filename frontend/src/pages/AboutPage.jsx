@@ -9,16 +9,17 @@ import usePageTitle from '../hooks/usePageTitle.js'
 
 // 서비스 안내 · 유의사항(UI-14). 고정 안내 화면이라 글을 이 파일에 둔다. (바꿀 때는 아래 SECTIONS 만 고친다)
 //  - 글 덩어리(blocks): { p: '문장' } 한 문장 한 줄 / { h: '소제목' } / { ul: ['항목', ...] }
-//  - col: PC 에서 놓이는 열(왼쪽 L / 오른쪽 R), order: 모바일에서 위에서부터의 순서
+//  - o: 모바일·태블릿에서 위에서부터의 순서, po: PC 에서의 순서 (PC 는 두 칸씩 짝을 지어 같은 높이로 놓인다)
+//  - wide: PC 에서 두 칸을 모두 차지하는 카드, open: 처음부터 펼쳐 둘 카드 (소개만 펼침, 나머지는 접어 둔다)
 //  - 내용은 서버의 안내 글(content_page 시드)과 같은 뜻으로 맞춰 두었다. 한쪽을 고치면 다른 쪽도 확인한다.
 
 const SECTIONS = [
-  { key: 'intro', title: '서비스 소개', col: 'L', order: 1, open: true, blocks: [
+  { key: 'intro', title: '서비스 소개', wide: true, o: 1, po: 1, open: true, blocks: [
     { p: '포르투나볼 AI는 역대 로또 데이터를 바탕으로 번호 조합, 통계, 회차 정보, 당첨 기록, 판매점 정보를 보여 주는 통계 기반 로또 정보 서비스예요.' },
     { p: '번호를 맞혀 주는 서비스가 아니라, 과거 데이터를 쉽게 살펴볼 수 있게 도와주는 서비스예요.' },
     { p: '번호는 서버의 통계 알고리즘으로만 만들고, AI는 설명을 도와줘요.' },
   ] },
-  { key: 'usage', title: '사용법', col: 'R', order: 2, blocks: [
+  { key: 'usage', title: '사용법', o: 2, po: 2, blocks: [
     { p: '회원가입 없이 바로 이용할 수 있어요.' },
     { h: '메뉴별 사용법' },
     { ul: [
@@ -30,7 +31,7 @@ const SECTIONS = [
       '판매점 지도: 지역을 검색하거나, 위치 사용에 동의하면 내 주변 판매점을 찾을 수 있어요.',
     ] },
   ] },
-  { key: 'ai', title: 'AI 이용 유의사항', col: 'R', order: 3, blocks: [
+  { key: 'ai', title: 'AI 이용 유의사항', o: 3, po: 3, blocks: [
     { h: 'AI가 하는 일' },
     { ul: ['통계 결과를 쉽게 설명해요.', '질문이 어떤 종류인지 분류하고, 필요한 통계를 찾아 와요.', '꿈 속 상징을 풀이해요.'] },
     { h: 'AI가 하지 않는 일' },
@@ -45,7 +46,7 @@ const SECTIONS = [
       '통계와 AI 답변은 과거 데이터를 바탕으로 해요. 다음 추첨의 결과를 알려 주지 않아요.',
     ] },
   ] },
-  { key: 'cost', title: '비용 · 후원 안내', col: 'R', order: 4, open: true, support: true, blocks: [
+  { key: 'cost', title: '비용 · 후원 안내', o: 4, po: 4, blocks: [
     { h: '무료로 쓸 수 있는 기능' },
     { p: '번호 생성, 통계 조회, 회차별 당첨번호, 당첨금 계산, 수령 가이드, 판매점 지도는 모두 무료예요.' },
     { h: 'AI 기능은 하루 무료 횟수가 있어요' },
@@ -62,7 +63,7 @@ const SECTIONS = [
     { p: '유료 이용권(횟수 충전)과 광고 보고 횟수 받기는 준비 중이에요.' },
     { p: '서비스가 마음에 드셨다면 후원으로 운영을 도와주실 수 있어요.' },
   ] },
-  { key: 'dream', title: '꿈풀이 안내 · 출처', col: 'L', order: 5, blocks: [
+  { key: 'dream', title: '꿈풀이 안내 · 출처', o: 6, po: 5, blocks: [
     { p: 'AI 로또 꿈풀이는 재미와 참고를 위한 풀이예요. 꿈이 결과를 알려 주는 것은 아니에요.' },
     { p: '꿈 상징 풀이는 서비스가 모아 둔 꿈 상징 자료를 바탕으로 하고, 각 상징에는 참고한 출처가 함께 기록돼 있어요.' },
     { h: '주요 참고 자료' },
@@ -74,7 +75,7 @@ const SECTIONS = [
     { p: '출처의 문장은 그대로 옮기지 않고 서비스 문장으로 다시 썼어요.' },
     { p: '출처마다 신뢰도를 함께 관리해요.' },
   ] },
-  { key: 'privacy', title: '개인정보 안내', col: 'L', order: 6, blocks: [
+  { key: 'privacy', title: '개인정보 안내', o: 7, po: 6, blocks: [
     { p: '회원가입을 받지 않고, 서비스에 꼭 필요한 정보만 최소한으로 사용해요.' },
     { h: '게스트 식별값' },
     { ul: [
@@ -96,7 +97,7 @@ const SECTIONS = [
       '사진에 이름, 주소, 연락처 같은 개인정보가 보이지 않게 해 주세요.',
     ] },
   ] },
-  { key: 'noguarantee', title: '당첨 보장 불가', col: 'L', order: 7, blocks: [
+  { key: 'noguarantee', title: '당첨 보장 불가', o: 8, po: 7, blocks: [
     { p: '통계 기반 생성 번호는 참고용이며, 당첨 확률과 무관하고 당첨을 보장하지 않아요.' },
     { ul: [
       '로또 추첨은 매 회차 독립적으로 이루어져요. 지난 회차에 어떤 번호가 많이 나왔는지는 다음 추첨의 결과를 바꾸지 않아요.',
@@ -104,13 +105,13 @@ const SECTIONS = [
       '번호 생성, AI 분석, 꿈풀이 모두 참고용이에요.',
     ] },
   ] },
-  { key: 'gambling', title: '도박 과몰입 주의', col: 'R', order: 8, fixed: true, call: true, blocks: [
+  { key: 'gambling', title: '도박 과몰입 주의', wide: true, o: 9, po: 10, fixed: true, call: true, blocks: [
     { p: '복권에 지나치게 빠지면 마음의 어려움이나 경제적인 문제로 이어질 수 있어요. 소액으로 가볍게 즐기는 정도를 지켜 주세요.' },
     { h: '이런 때는 잠시 멈춰 주세요' },
     { ul: ['구매 금액이 점점 늘어나고 있어요.', '잃은 돈을 되찾으려고 더 사고 싶어져요.', '복권 생각 때문에 일상이나 인간관계가 힘들어졌어요.'] },
     { p: '만 19세 미만은 복권을 구매할 수 없어요.' },
   ] },
-  { key: 'disclaimer', title: '면책 고지', col: 'L', order: 9, blocks: [
+  { key: 'disclaimer', title: '면책 고지', o: 10, po: 8, blocks: [
     { ul: [
       '이 서비스는 참고용 정보를 제공해요. 번호 구매, 당첨금 수령 등 모든 결정과 그 결과의 책임은 이용하는 분에게 있어요.',
       '공식 당첨 결과는 동행복권 기준이에요. 이 서비스의 당첨번호, 당첨금, 판정 결과는 공식 결과와 다를 수 있어요.',
@@ -132,24 +133,25 @@ function Blocks({ blocks }) {
 
 function Section({ s }) {
   const [open, setOpen] = useState(!!s.open)
-  const toast = useToast()
-  const body = (
-    <div className="ab__body" id={`ab-${s.key}`}>
-      <Blocks blocks={s.blocks} />
-      {s.support && (
-        <button type="button" className="btn btn--ghost ab__btn" onClick={() => toast('후원 기능은 준비 중이에요.')}>후원하기</button>
-      )}
-      {s.call && (
-        <>
-          <p>도박문제 상담은 한국도박문제예방치유원 1336에서 받을 수 있어요.</p>
-          <a className="btn btn--cta btn--block ab__btn" href="tel:1336">한국도박문제예방치유원 1336</a>
-          <p>동행복권 동행클린센터는 080-800-0501이에요. (평일 오전 9시~오후 6시, 주말·공휴일 휴무)</p>
-        </>
-      )}
+  const blocks = <Blocks blocks={s.blocks} />
+  // 도박 과몰입 주의: PC 에서는 왼쪽에 안내 글, 오른쪽에 상담 전화 칸으로 나눠 가로로 넓게 보여 준다
+  const body = s.call ? (
+    <div className="ab__body ab__body--split" id={`ab-${s.key}`}>
+      <div className="ab__split-l">{blocks}</div>
+      <div className="ab__split-r">
+        <p>도박문제 상담은 한국도박문제예방치유원 1336에서 받을 수 있어요.</p>
+        <a className="btn btn--cta btn--block ab__btn" href="tel:1336">한국도박문제예방치유원 1336</a>
+        <p>동행복권 동행클린센터는 080-800-0501이에요. (평일 오전 9시~오후 6시, 주말·공휴일 휴무)</p>
+      </div>
     </div>
+  ) : (
+    <div className="ab__body" id={`ab-${s.key}`}>{blocks}</div>
   )
   return (
-    <section className="card card--hero ab__card" style={{ order: s.order }}>
+    <section
+      className={`card card--hero ab__card${s.wide ? ' ab__card--wide' : ''}`}
+      style={{ '--o': s.o, '--po': s.po }}
+    >
       {s.fixed ? (
         <>
           <h2 className="ab__title ab__title--fixed">{s.title}</h2>
@@ -168,7 +170,23 @@ function Section({ s }) {
   )
 }
 
-/** 서비스 안내 · 유의사항(UI-14). 항목을 눌러 펼치고 접는다. PC 는 두 줄, 모바일은 한 줄로 쌓인다. */
+// 후원하기 줄: 접힌 카드 한 장과 같은 높이로 만들어 짝을 이루는 카드와 높이를 맞춘다. 비용 · 후원 안내와 가까이(모바일) 놓는다.
+function SupportBar() {
+  const toast = useToast()
+  return (
+    <section className="card card--hero ab__card ab__support" style={{ '--o': 5, '--po': 9 }}>
+      <div className="ab__support-text">
+        <h2 className="ab__title">서비스가 마음에 드셨나요?</h2>
+        <p>후원으로 운영을 도와주실 수 있어요.</p>
+      </div>
+      <button type="button" className="btn btn--ghost ab__support-btn" onClick={() => toast('후원 기능은 준비 중이에요.')}>
+        후원하기
+      </button>
+    </section>
+  )
+}
+
+/** 서비스 안내 · 유의사항(UI-14). 항목을 눌러 펼치고 접는다. 모바일은 한 줄로 쌓이고, PC·넓은 태블릿은 두 칸씩 짝을 이뤄 높이가 맞게 놓인다. */
 export default function AboutPage() {
   usePageTitle('서비스 안내 · 유의사항')
   return (
@@ -179,11 +197,8 @@ export default function AboutPage() {
       </PageHeader>
 
       <div className="ab__cols">
-        {['L', 'R'].map((c) => (
-          <div key={c} className="ab__col">
-            {SECTIONS.filter((s) => s.col === c).map((s) => <Section key={s.key} s={s} />)}
-          </div>
-        ))}
+        {SECTIONS.map((s) => <Section key={s.key} s={s} />)}
+        <SupportBar />
       </div>
 
       <AdSlot />

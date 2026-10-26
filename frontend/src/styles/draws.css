@@ -11,6 +11,11 @@
   align-items: start;
   transition: opacity var(--t-fast) var(--ease);
 }
+.draws__left {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 .draws__body.is-loading {
   opacity: 0.55;
 }
@@ -237,6 +242,22 @@ button.draws__row {
   .draws__body {
     grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.5fr);
     gap: 24px;
+  }
+  /* 후원 줄: 이 화면에서만 살짝 키운다 */
+  .draws__left .sidec__support {
+    min-height: 76px;
+    padding: 12px 24px;
+  }
+  .draws__left .sidec__support-text b {
+    font-size: 17px;
+  }
+  .draws__left .sidec__support-text small {
+    font-size: 13.5px;
+  }
+  .draws__left .sidec__support-btn {
+    min-height: 44px;
+    padding: 0 24px;
+    font-size: 15px;
   }
   .draws__round {
     padding: 28px 24px;
