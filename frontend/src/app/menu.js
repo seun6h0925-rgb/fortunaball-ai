@@ -9,7 +9,7 @@ export const MENU_GROUPS = [
       { to: '/generate', label: '통계 번호 생성', desc: '통계로 번호 만들기', longDesc: '대상 회차 번호를 통계로 만들어요', icon: 'sparkle' },
       { to: '/generate/patterns', label: '패턴 모아보기', desc: '패턴을 비교하고 생성', longDesc: '패턴을 비교하고 골라서 만들어요', icon: 'sparkle' },
       { to: '/analyst', label: 'AI 애널리스트', desc: '번호 분석 · 질문', longDesc: '대화로 분석하고 번호를 받아요', icon: 'bars' },
-      { to: '/dream', label: '꿈풀이 번호', desc: '꿈으로 번호 얻기', longDesc: '꿈 내용으로 참고 번호를 만들어요', icon: 'moon' },
+      { to: '/dream', label: 'AI 꿈풀이', desc: '꿈으로 번호 얻기', longDesc: '꿈 내용으로 참고 번호를 만들어요', icon: 'moon' },
     ],
   },
   {
